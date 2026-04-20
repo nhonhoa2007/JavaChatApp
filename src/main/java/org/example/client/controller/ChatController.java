@@ -6,10 +6,16 @@ import com.google.gson.JsonParser;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import org.controlsfx.control.Notifications;
@@ -153,19 +159,19 @@ public class ChatController {
                         setText(null);
                         setGraphic(null);
                         setContextMenu(null);
-                    } else if (item instanceof String) {
-                        String text = (String) item;
-                        setText(text);
-                        setGraphic(null);
-                        if (text.startsWith("Bạn")) {
+                        setStyle("-fx-background-color: transparent;");
+                    } else if (item instanceof HBox) {
+                        HBox container = (HBox) item;
+                        setText(null);
+                        setGraphic(container);
+                        
+                        // Check alignment to set context menu for "Bạn"
+                        if (container.getAlignment() == Pos.CENTER_RIGHT) {
                             setContextMenu(contextMenu);
                         } else {
                             setContextMenu(null);
                         }
-                    } else if (item instanceof HBox) {
-                        setText(null);
-                        setGraphic((HBox) item);
-                        setContextMenu(null); // Không support sửa/thu hồi hình ảnh tạm thời
+                        setStyle("-fx-background-color: transparent; -fx-padding: 5px;");
                     }
                 }
             };
@@ -263,7 +269,6 @@ public class ChatController {
 
         // Logic check lại sau khi load xong danh sách mới
         if (actualSelected != null) {
-            // Nếu người đang chọn vẫn nằm trong list mới (mình chặn họ thì vẫn còn, nhưng họ chặn mình thì mình bị mất)
             boolean stillExists = false;
             for(String item : listUsers.getItems()) {
                 if(extractUsername(item).equals(actualSelected)) {
@@ -384,11 +389,11 @@ public class ChatController {
             String content = msg.get("content").getAsString();
             String type = msg.get("type").getAsString();
             
+            boolean isMe = sender.equals("Bạn");
             if (type.equals("IMAGE")) {
-                listMessages.getItems().add(createImageNode(sender, content));
+                listMessages.getItems().add(createImageMessageNode(sender, content, isMe));
             } else {
-                String displayText = sender + ": " + content;
-                listMessages.getItems().add(displayText);
+                listMessages.getItems().add(createTextMessageNode(sender, content, isMe));
             }
             messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
         }
@@ -398,14 +403,12 @@ public class ChatController {
         JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
         long messageId = json.get("id").getAsLong();
         String content = json.get("content").getAsString();
-        String receiver = json.get("receiver").getAsString();
         String type = json.has("type") ? json.get("type").getAsString() : "TEXT";
         
         if (type.equals("IMAGE")) {
-            listMessages.getItems().add(createImageNode("Bạn", content));
+            listMessages.getItems().add(createImageMessageNode("Bạn", content, true));
         } else {
-            String displayText = "Bạn (tới " + receiver + "): " + content;
-            listMessages.getItems().add(displayText);
+            listMessages.getItems().add(createTextMessageNode("Bạn", content, true));
         }
         
         messageIdToIndexMap.put(messageId, listMessages.getItems().size() - 1);
@@ -420,10 +423,9 @@ public class ChatController {
         String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
         if (selectedUser != null && selectedUser.equals(sender)) {
             if (type.equals("IMAGE")) {
-                listMessages.getItems().add(createImageNode(sender, content));
+                listMessages.getItems().add(createImageMessageNode(sender, content, false));
             } else {
-                String displayText = sender + ": " + content;
-                listMessages.getItems().add(displayText);
+                listMessages.getItems().add(createTextMessageNode(sender, content, false));
             }
 
             if (json.has("id")) {
@@ -439,23 +441,86 @@ public class ChatController {
         }
     }
 
-    private HBox createImageNode(String sender, String base64Content) {
-        HBox hbox = new HBox(5);
+    // Helper method to create a modern text message UI node
+    private HBox createTextMessageNode(String sender, String content, boolean isMe) {
+        HBox container = new HBox();
+        container.setSpacing(10);
+        
+        VBox messageBox = new VBox();
+        messageBox.setSpacing(2);
+        messageBox.setMaxWidth(400);
+
+        Label senderLabel = new Label(sender);
+        senderLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #888;");
+
+        Text text = new Text(content);
+        text.setStyle("-fx-font-size: 14px;");
+
+        TextFlow textFlow = new TextFlow(text);
+        textFlow.setPadding(new javafx.geometry.Insets(8, 12, 8, 12));
+        
+        if (isMe) {
+            text.setFill(Color.WHITE);
+            textFlow.setStyle("-fx-background-color: #2196F3; -fx-background-radius: 15px 15px 0px 15px;");
+            messageBox.setAlignment(Pos.CENTER_RIGHT);
+            container.setAlignment(Pos.CENTER_RIGHT);
+            messageBox.getChildren().add(textFlow); // Don't show sender name for "Me"
+        } else {
+            text.setFill(Color.BLACK);
+            textFlow.setStyle("-fx-background-color: #E0E0E0; -fx-background-radius: 15px 15px 15px 0px;");
+            messageBox.setAlignment(Pos.CENTER_LEFT);
+            container.setAlignment(Pos.CENTER_LEFT);
+            messageBox.getChildren().addAll(senderLabel, textFlow);
+        }
+
+        // Store the original text as user data for context menu retrieval
+        container.setUserData(content);
+        
+        container.getChildren().add(messageBox);
+        return container;
+    }
+
+    // Helper method to create a modern image message UI node
+    private HBox createImageMessageNode(String sender, String base64Content, boolean isMe) {
+        HBox container = new HBox();
+        container.setSpacing(10);
+        
+        VBox messageBox = new VBox();
+        messageBox.setSpacing(2);
+        
+        Label senderLabel = new Label(sender);
+        senderLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #888;");
+
         try {
             byte[] imageBytes = Base64.getDecoder().decode(base64Content);
             Image image = new Image(new ByteArrayInputStream(imageBytes));
             ImageView imageView = new ImageView(image);
-            imageView.setFitWidth(150);
+            imageView.setFitWidth(200);
             imageView.setPreserveRatio(true);
             
-            Label senderLabel = new Label(sender + ": ");
-            senderLabel.setStyle("-fx-font-weight: bold;");
+            // Add a small border radius effect using CSS wrapper
+            VBox imageWrapper = new VBox(imageView);
+            imageWrapper.setPadding(new javafx.geometry.Insets(5));
             
-            hbox.getChildren().addAll(senderLabel, imageView);
+            if (isMe) {
+                imageWrapper.setStyle("-fx-background-color: #2196F3; -fx-background-radius: 10px 10px 0px 10px;");
+                messageBox.setAlignment(Pos.CENTER_RIGHT);
+                container.setAlignment(Pos.CENTER_RIGHT);
+                messageBox.getChildren().add(imageWrapper);
+            } else {
+                imageWrapper.setStyle("-fx-background-color: #E0E0E0; -fx-background-radius: 10px 10px 10px 0px;");
+                messageBox.setAlignment(Pos.CENTER_LEFT);
+                container.setAlignment(Pos.CENTER_LEFT);
+                messageBox.getChildren().addAll(senderLabel, imageWrapper);
+            }
         } catch (Exception e) {
-            hbox.getChildren().add(new Label(sender + ": [Lỗi hiển thị hình ảnh]"));
+            Label errorLabel = new Label("[Lỗi hiển thị hình ảnh]");
+            messageBox.getChildren().add(errorLabel);
         }
-        return hbox;
+
+        container.setUserData(base64Content); // Store base64 just in case
+        container.getChildren().add(messageBox);
+        return container;
     }
 
     private void handleMessageRecalled(String payload) {
@@ -466,10 +531,13 @@ public class ChatController {
             int index = messageIdToIndexMap.get(messageId);
             if (index < listMessages.getItems().size()) {
                 Object oldItem = listMessages.getItems().get(index);
-                if (oldItem instanceof String) {
-                    String oldText = (String) oldItem;
-                    String senderPrefix = oldText.substring(0, oldText.indexOf(":") + 1);
-                    listMessages.getItems().set(index, senderPrefix + " [Tin nhắn đã bị thu hồi]");
+                if (oldItem instanceof HBox) {
+                    HBox oldContainer = (HBox) oldItem;
+                    boolean isMe = oldContainer.getAlignment() == Pos.CENTER_RIGHT;
+                    String sender = isMe ? "Bạn" : "Người dùng";
+                    
+                    HBox recalledNode = createTextMessageNode(sender, "🚫 Tin nhắn đã bị thu hồi", isMe);
+                    listMessages.getItems().set(index, recalledNode);
                 }
             }
         }
@@ -484,10 +552,15 @@ public class ChatController {
             int index = messageIdToIndexMap.get(messageId);
             if (index < listMessages.getItems().size()) {
                 Object oldItem = listMessages.getItems().get(index);
-                if (oldItem instanceof String) {
-                    String oldText = (String) oldItem;
-                    String senderPrefix = oldText.substring(0, oldText.indexOf(":") + 1);
-                    listMessages.getItems().set(index, senderPrefix + " " + newContent + " (Đã chỉnh sửa)");
+                if (oldItem instanceof HBox) {
+                    HBox oldContainer = (HBox) oldItem;
+                    boolean isMe = oldContainer.getAlignment() == Pos.CENTER_RIGHT;
+                    String sender = isMe ? "Bạn" : "Người dùng"; // Simplified
+                    
+                    HBox editedNode = createTextMessageNode(sender, newContent + " (Đã chỉnh sửa)", isMe);
+                    // Store original un-appended newContent for further edits
+                    editedNode.setUserData(newContent); 
+                    listMessages.getItems().set(index, editedNode);
                 }
             }
         }
@@ -569,12 +642,9 @@ public class ChatController {
             payload.addProperty("messageId", messageIdToRecall);
             ClientApplication.getChatClient().sendPacket(new Packet("RECALL_MESSAGE", payload.toString()));
             
-            Object oldItem = listMessages.getItems().get(selectedIndex);
-            if (oldItem instanceof String) {
-                String oldText = (String) oldItem;
-                String prefix = oldText.substring(0, oldText.indexOf(":") + 1);
-                listMessages.getItems().set(selectedIndex, prefix + " [Bạn đã thu hồi tin nhắn này]");
-            }
+            // Update local UI immediately
+            HBox recalledNode = createTextMessageNode("Bạn", "🚫 Tin nhắn đã bị thu hồi", true);
+            listMessages.getItems().set(selectedIndex, recalledNode);
         } else {
             showAlert("Không thể thu hồi", "Tin nhắn này không hỗ trợ thu hồi (chưa có ID từ Server).", Alert.AlertType.WARNING);
         }
@@ -587,19 +657,18 @@ public class ChatController {
         Long messageIdToEdit = findMessageIdByIndex(selectedIndex);
         if (messageIdToEdit != null) {
             Object oldItem = listMessages.getItems().get(selectedIndex);
-            if (!(oldItem instanceof String)) {
+            if (!(oldItem instanceof HBox)) return;
+            
+            HBox oldContainer = (HBox) oldItem;
+            Object userData = oldContainer.getUserData();
+            
+            // Allow editing only if it's text (we saved raw content as UserData for text)
+            if (userData == null || userData.toString().startsWith("/9j/")) { // "/9j/" is typical base64 prefix for images
                 showAlert("Thông báo", "Chỉ hỗ trợ chỉnh sửa tin nhắn văn bản.", Alert.AlertType.WARNING);
                 return;
             }
             
-            String oldText = (String) oldItem;
-            int colonIndex = oldText.indexOf(":");
-            if(colonIndex == -1) return;
-            
-            String oldContent = oldText.substring(colonIndex + 2);
-            if (oldContent.endsWith(" (Đã chỉnh sửa)")) {
-                oldContent = oldContent.replace(" (Đã chỉnh sửa)", "");
-            }
+            String oldContent = userData.toString();
 
             TextInputDialog dialog = new TextInputDialog(oldContent);
             dialog.setTitle("Chỉnh sửa tin nhắn");
@@ -607,16 +676,16 @@ public class ChatController {
             dialog.setContentText("Nội dung:");
 
             Optional<String> result = dialog.showAndWait();
-            String finalOldContent = oldContent;
             result.ifPresent(newContent -> {
-                if (!newContent.trim().isEmpty() && !newContent.equals(finalOldContent)) {
+                if (!newContent.trim().isEmpty() && !newContent.equals(oldContent)) {
                     JsonObject payload = new JsonObject();
                     payload.addProperty("messageId", messageIdToEdit);
                     payload.addProperty("newContent", newContent);
                     ClientApplication.getChatClient().sendPacket(new Packet("EDIT_MESSAGE", payload.toString()));
                     
-                    String prefix = oldText.substring(0, colonIndex + 1);
-                    listMessages.getItems().set(selectedIndex, prefix + " " + newContent + " (Đã chỉnh sửa)");
+                    HBox editedNode = createTextMessageNode("Bạn", newContent + " (Đã chỉnh sửa)", true);
+                    editedNode.setUserData(newContent); // Store new raw content
+                    listMessages.getItems().set(selectedIndex, editedNode);
                 }
             });
         } else {

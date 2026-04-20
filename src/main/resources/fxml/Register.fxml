@@ -26,6 +26,6 @@
 
     <Button text="Register" onAction="#handleRegister" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-pref-width: 200px; -fx-pref-height: 35px; -fx-font-weight: bold; -fx-cursor: hand;"/>
 
-    <Button text="Back to Login" onAction="#goBackToLogin" style="-fx-background-color: transparent; -fx-text-fill: #2196F3; -fx-underline: true; -fx-cursor: hand;"/>
+    <Button text="Back to Login" onAction="#goBackToLogin" style="-fx-background-color: transparent; -fx-text-fill: #467eae; -fx-underline: true; -fx-cursor: hand;"/>
 
 </VBox>

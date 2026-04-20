@@ -1,11 +1,10 @@
 package org.example.server.network;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import org.example.common.model.User;
 import org.example.common.network.Packet;
-import org.example.server.dao.UserDAO;
-import org.example.server.util.PasswordUtil;
+import org.example.server.service.AuthService;
+import org.example.server.service.ChatService;
+import org.example.server.service.FriendService;
+import org.example.server.service.MessageService;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -14,16 +13,21 @@ import java.net.Socket;
 
 public class ClientHandler implements Runnable {
     private final Socket socket;
-    private final ServerManager serverManager;
     private PrintWriter out;
     private BufferedReader in;
     private String currentUsername;
 
-    private final UserDAO userDAO = new UserDAO();
+    private final AuthService authService;
+    private final ChatService chatService;
+    private final MessageService messageService;
+    private final FriendService friendService;
 
     public ClientHandler(Socket socket, ServerManager serverManager) {
         this.socket = socket;
-        this.serverManager = serverManager;
+        this.authService = new AuthService(serverManager);
+        this.chatService = new ChatService(serverManager);
+        this.messageService = new MessageService(serverManager);
+        this.friendService = new FriendService(serverManager);
     }
 
     @Override
@@ -49,78 +53,61 @@ public class ClientHandler implements Runnable {
     private void handlePacket(Packet packet) {
         switch (packet.getType()) {
             case "REGISTER_REQUEST":
-                handleRegisterRequest(packet.getPayload());
+                authService.handleRegister(packet.getPayload(), this);
                 break;
                 
             case "LOGIN_REQUEST":
-                handleLoginRequest(packet.getPayload());
+                authService.handleLogin(packet.getPayload(), this);
+                // Sau khi login xong, load bạn bè luôn
+                friendService.handleLoadFriends(this);
+                break;
+
+            case "LOAD_HISTORY_REQUEST":
+                chatService.handleLoadHistory(packet.getPayload(), this);
                 break;
                 
+            case "PRIVATE_MESSAGE":
+                chatService.handlePrivateMessage(packet.getPayload(), this);
+                break;
+                
+            case "BROADCAST_MESSAGE":
+                chatService.handleBroadcastMessage(packet.getPayload(), this);
+                break;
+
+            case "RECALL_MESSAGE":
+                messageService.handleRecallMessage(packet.getPayload(), this);
+                break;
+
+            case "EDIT_MESSAGE":
+                messageService.handleEditMessage(packet.getPayload(), this);
+                break;
+
+            case "ADD_FRIEND_REQUEST":
+                friendService.handleAddFriend(packet.getPayload(), this);
+                break;
+
+            case "ACCEPT_FRIEND_REQUEST":
+                friendService.handleAcceptFriend(packet.getPayload(), this);
+                break;
+
+            case "LOAD_FRIENDS_REQUEST":
+                friendService.handleLoadFriends(this);
+                break;
+
+            case "BLOCK_USER_REQUEST":
+                friendService.handleBlockUser(packet.getPayload(), this);
+                break;
+
+            case "MUTE_USER_REQUEST":
+                friendService.handleMuteUser(packet.getPayload(), this);
+                break;
+
             case "LOGOUT_REQUEST":
                 disconnect();
                 break;
                 
             default:
                 System.out.println("Unknown packet type: " + packet.getType());
-        }
-    }
-
-    private void handleRegisterRequest(String payload) {
-        try {
-            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
-            String username = json.get("username").getAsString();
-            String plainPassword = json.get("password").getAsString();
-            String fullName = json.has("fullName") ? json.get("fullName").getAsString() : username;
-
-            if (userDAO.findByUsername(username) != null) {
-                sendPacket(new Packet("REGISTER_ERROR", "Username already exists!"));
-                return;
-            }
-
-            String hashedPassword = PasswordUtil.hashPassword(plainPassword);
-
-            User newUser = new User(username, hashedPassword, fullName);
-            boolean isSaved = userDAO.saveUser(newUser);
-
-            if (isSaved) {
-                sendPacket(new Packet("REGISTER_SUCCESS", "Registration successful!"));
-                System.out.println("New account created: " + username);
-            } else {
-                sendPacket(new Packet("REGISTER_ERROR", "Database error during registration."));
-            }
-
-        } catch (Exception e) {
-            sendPacket(new Packet("REGISTER_ERROR", "Invalid request data."));
-            e.printStackTrace();
-        }
-    }
-
-    private void handleLoginRequest(String payload) {
-        try {
-            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
-            String username = json.get("username").getAsString();
-            String plainPassword = json.get("password").getAsString();
-
-            User user = userDAO.findByUsername(username);
-
-            if (user != null && PasswordUtil.checkPassword(plainPassword, user.getPasswordHash())) {
-                
-                this.currentUsername = username;
-                System.out.println("User logged in successfully: " + currentUsername);
-
-                userDAO.updateUserStatus(currentUsername, "ONLINE");
-
-                sendPacket(new Packet("LOGIN_SUCCESS", "Login successful! Welcome " + user.getFullName()));
-                
-                serverManager.broadcastOnlineStatus(currentUsername, true);
-
-            } else {
-                sendPacket(new Packet("LOGIN_ERROR", "Incorrect username or password!"));
-            }
-
-        } catch (Exception e) {
-            sendPacket(new Packet("LOGIN_ERROR", "Invalid request data."));
-            e.printStackTrace();
         }
     }
 
@@ -131,13 +118,7 @@ public class ClientHandler implements Runnable {
     }
 
     private void disconnect() {
-        if (currentUsername != null) {
-            serverManager.broadcastOnlineStatus(currentUsername, false);
-            userDAO.updateUserStatus(currentUsername, "OFFLINE");
-            serverManager.removeClient(this);
-            System.out.println("User logged out: " + currentUsername);
-            currentUsername = null;
-        }
+        authService.handleLogout(this);
         try {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
@@ -148,5 +129,9 @@ public class ClientHandler implements Runnable {
 
     public String getCurrentUsername() {
         return currentUsername;
+    }
+
+    public void setCurrentUsername(String currentUsername) {
+        this.currentUsername = currentUsername;
     }
 }

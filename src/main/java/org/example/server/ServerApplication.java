@@ -8,7 +8,6 @@ public class ServerApplication {
         System.out.println("Initializing Database connection...");
         HibernateUtil.getSessionFactory();
         System.out.println("Database initialized successfully.");
-
         ServerManager server = new ServerManager();
         server.startServer();
     }

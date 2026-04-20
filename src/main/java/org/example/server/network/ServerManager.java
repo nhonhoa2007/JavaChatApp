@@ -31,6 +31,10 @@ public class ServerManager {
         }
     }
 
+    public List<ClientHandler> getActiveClients() {
+        return activeClients;
+    }
+
     public void removeClient(ClientHandler clientHandler) {
         activeClients.remove(clientHandler);
     }
@@ -42,6 +46,25 @@ public class ServerManager {
         for (ClientHandler client : activeClients) {
             if (client.getCurrentUsername() != null && !client.getCurrentUsername().equals(username)) {
                 client.sendPacket(statusPacket);
+            }
+        }
+    }
+
+    public void sendToClient(String username, Packet packet) {
+        for (ClientHandler client : activeClients) {
+            if (username.equals(client.getCurrentUsername())) {
+                client.sendPacket(packet);
+                break;
+            }
+        }
+    }
+
+    public void broadcastPacket(Packet packet, ClientHandler excludeClient) {
+        for (ClientHandler client : activeClients) {
+            if (excludeClient == null || client != excludeClient) {
+                if (client.getCurrentUsername() != null) {
+                    client.sendPacket(packet);
+                }
             }
         }
     }

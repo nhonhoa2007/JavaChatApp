@@ -20,6 +20,8 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import org.controlsfx.control.Notifications;
 import org.example.client.ClientApplication;
+import org.example.client.util.VoicePlayer;
+import org.example.client.util.VoiceRecorder;
 import org.example.common.network.Packet;
 
 import java.io.ByteArrayInputStream;
@@ -30,6 +32,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import javax.sound.sampled.LineUnavailableException;
 
 public class ChatController {
 
@@ -57,11 +60,18 @@ public class ChatController {
     @FXML
     private Button btnMute;
 
+    @FXML
+    private Button btnVoice;
+
     private String currentUsername;
     private final Map<Long, Integer> messageIdToIndexMap = new HashMap<>();
 
     private final Map<String, Boolean> isBlockedByMeMap = new HashMap<>();
     private final Map<String, Boolean> isMutedByMeMap = new HashMap<>();
+    private final VoiceRecorder voiceRecorder = new VoiceRecorder();
+    private String voiceRecordingTarget;
+
+    private record MessageData(String type, String content, boolean isMe) {}
 
     private String extractUsername(String displayItem) {
         if (displayItem == null) return null;
@@ -86,13 +96,18 @@ public class ChatController {
                 lblChatTitle.setText("Chọn một người bạn để bắt đầu trò chuyện");
                 listMessages.getItems().clear();
                 messageIdToIndexMap.clear();
-                if (btnBlock != null) btnBlock.setVisible(false);
+                if (btnBlock != null) btnBlock.setVisible(true);
                 if (btnMute != null) btnMute.setVisible(false);
             }
         });
 
         setupMessageContextMenu();
         setupRequestContextMenu();
+
+        // Chủ động request danh sách bạn bè ngay khi ChatController đã sẵn sàng nhận response.
+        // Trước đây server gửi LOAD_FRIENDS_SUCCESS ngay sau LOGIN_SUCCESS nhưng lúc đó
+        // LoginController vẫn đang là handler → packet bị bỏ qua.
+        ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
     }
 
     private void updateControlButtons(String targetUser) {
@@ -390,11 +405,7 @@ public class ChatController {
             String type = msg.get("type").getAsString();
             
             boolean isMe = sender.equals("Bạn");
-            if (type.equals("IMAGE")) {
-                listMessages.getItems().add(createImageMessageNode(sender, content, isMe));
-            } else {
-                listMessages.getItems().add(createTextMessageNode(sender, content, isMe));
-            }
+            listMessages.getItems().add(createMessageNodeByType(sender, content, isMe, type));
             messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
         }
     }
@@ -405,12 +416,8 @@ public class ChatController {
         String content = json.get("content").getAsString();
         String type = json.has("type") ? json.get("type").getAsString() : "TEXT";
         
-        if (type.equals("IMAGE")) {
-            listMessages.getItems().add(createImageMessageNode("Bạn", content, true));
-        } else {
-            listMessages.getItems().add(createTextMessageNode("Bạn", content, true));
-        }
-        
+        listMessages.getItems().add(createMessageNodeByType("Bạn", content, true, type));
+
         messageIdToIndexMap.put(messageId, listMessages.getItems().size() - 1);
     }
 
@@ -422,11 +429,7 @@ public class ChatController {
         
         String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
         if (selectedUser != null && selectedUser.equals(sender)) {
-            if (type.equals("IMAGE")) {
-                listMessages.getItems().add(createImageMessageNode(sender, content, false));
-            } else {
-                listMessages.getItems().add(createTextMessageNode(sender, content, false));
-            }
+            listMessages.getItems().add(createMessageNodeByType(sender, content, false, type));
 
             if (json.has("id")) {
                 long messageId = json.get("id").getAsLong();
@@ -436,9 +439,26 @@ public class ChatController {
 
         boolean isMuted = json.has("isMuted") && json.get("isMuted").getAsBoolean();
         if (!isMuted) {
-            String notiText = type.equals("IMAGE") ? "[Hình ảnh]" : content;
+            String notiText;
+            if ("IMAGE".equals(type)) {
+                notiText = "[Hình ảnh]";
+            } else if ("VOICE".equals(type)) {
+                notiText = "[Voice]";
+            } else {
+                notiText = content;
+            }
             showPushNotification(sender, notiText);
         }
+    }
+
+    private HBox createMessageNodeByType(String sender, String content, boolean isMe, String type) {
+        if ("IMAGE".equals(type)) {
+            return createImageMessageNode(sender, content, isMe);
+        }
+        if ("VOICE".equals(type)) {
+            return createVoiceMessageNode(sender, content, isMe);
+        }
+        return createTextMessageNode(sender, content, isMe);
     }
 
     // Helper method to create a modern text message UI node
@@ -474,8 +494,8 @@ public class ChatController {
         }
 
         // Store the original text as user data for context menu retrieval
-        container.setUserData(content);
-        
+        container.setUserData(new MessageData("TEXT", content, isMe));
+
         container.getChildren().add(messageBox);
         return container;
     }
@@ -518,9 +538,60 @@ public class ChatController {
             messageBox.getChildren().add(errorLabel);
         }
 
-        container.setUserData(base64Content); // Store base64 just in case
+        container.setUserData(new MessageData("IMAGE", base64Content, isMe));
         container.getChildren().add(messageBox);
         return container;
+    }
+
+    private HBox createVoiceMessageNode(String sender, String base64Content, boolean isMe) {
+        HBox container = new HBox();
+        container.setSpacing(10);
+
+        VBox messageBox = new VBox();
+        messageBox.setSpacing(2);
+        messageBox.setMaxWidth(400);
+
+        Label senderLabel = new Label(sender);
+        senderLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #888;");
+
+        Button playButton = new Button("▶ Phát voice");
+        playButton.setStyle("-fx-background-color: white; -fx-text-fill: #2196F3; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10px;");
+        playButton.setOnAction(e -> playVoiceMessage(base64Content));
+
+        Label voiceLabel = new Label("Tin nhắn thoại");
+        voiceLabel.setStyle("-fx-font-size: 13px;");
+
+        HBox voiceBox = new HBox(8, playButton, voiceLabel);
+        voiceBox.setPadding(new javafx.geometry.Insets(8, 12, 8, 12));
+
+        if (isMe) {
+            voiceLabel.setTextFill(Color.WHITE);
+            voiceBox.setStyle("-fx-background-color: #2196F3; -fx-background-radius: 15px 15px 0px 15px;");
+            messageBox.setAlignment(Pos.CENTER_RIGHT);
+            container.setAlignment(Pos.CENTER_RIGHT);
+            messageBox.getChildren().add(voiceBox);
+        } else {
+            voiceLabel.setTextFill(Color.BLACK);
+            voiceBox.setStyle("-fx-background-color: #E0E0E0; -fx-background-radius: 15px 15px 15px 0px;");
+            messageBox.setAlignment(Pos.CENTER_LEFT);
+            container.setAlignment(Pos.CENTER_LEFT);
+            messageBox.getChildren().addAll(senderLabel, voiceBox);
+        }
+
+        container.setUserData(new MessageData("VOICE", base64Content, isMe));
+        container.getChildren().add(messageBox);
+        return container;
+    }
+
+    private void playVoiceMessage(String base64Content) {
+        new Thread(() -> {
+            try {
+                byte[] audioBytes = Base64.getDecoder().decode(base64Content);
+                VoicePlayer.play(audioBytes);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Lỗi phát voice", "Không thể phát tin nhắn thoại.", Alert.AlertType.ERROR));
+            }
+        }, "voice-player").start();
     }
 
     private void handleMessageRecalled(String payload) {
@@ -554,12 +625,18 @@ public class ChatController {
                 Object oldItem = listMessages.getItems().get(index);
                 if (oldItem instanceof HBox) {
                     HBox oldContainer = (HBox) oldItem;
+                    MessageData oldData = oldContainer.getUserData() instanceof MessageData ? (MessageData) oldContainer.getUserData() : null;
+                    if (oldData == null || !"TEXT".equals(oldData.type())) {
+                        showAlert("Thông báo", "Chỉ hỗ trợ chỉnh sửa tin nhắn văn bản.", Alert.AlertType.WARNING);
+                        return;
+                    }
+
                     boolean isMe = oldContainer.getAlignment() == Pos.CENTER_RIGHT;
                     String sender = isMe ? "Bạn" : "Người dùng"; // Simplified
                     
                     HBox editedNode = createTextMessageNode(sender, newContent + " (Đã chỉnh sửa)", isMe);
                     // Store original un-appended newContent for further edits
-                    editedNode.setUserData(newContent); 
+                    editedNode.setUserData(new MessageData("TEXT", newContent, isMe));
                     listMessages.getItems().set(index, editedNode);
                 }
             }
@@ -629,7 +706,71 @@ public class ChatController {
 
     @FXML
     public void handleSendVoice(ActionEvent event) {
-        showAlert("Thông báo", "Tính năng gửi Voice chat sẽ được cập nhật trong phiên bản sau.", Alert.AlertType.INFORMATION);
+        String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
+
+        if (!voiceRecorder.isRecording()) {
+            if (selectedUser == null) {
+                showAlert("Thông báo", "Vui lòng chọn một người bạn để gửi voice.", Alert.AlertType.WARNING);
+                return;
+            }
+
+            try {
+                if (voiceRecorder.start()) {
+                    voiceRecordingTarget = selectedUser;
+                    updateVoiceButton(true);
+                }
+            } catch (LineUnavailableException e) {
+                updateVoiceButton(false);
+                showAlert("Lỗi", "Không thể truy cập micro để ghi âm.", Alert.AlertType.ERROR);
+            }
+            return;
+        }
+
+        try {
+            byte[] wavBytes = voiceRecorder.stop();
+            updateVoiceButton(false);
+
+            if (wavBytes.length == 0) {
+                showAlert("Thông báo", "Không ghi được dữ liệu voice.", Alert.AlertType.WARNING);
+                return;
+            }
+
+            if (wavBytes.length > 2 * 1024 * 1024) {
+                showAlert("Lỗi", "Voice quá lớn. Vui lòng ghi ngắn hơn.", Alert.AlertType.ERROR);
+                return;
+            }
+
+            if (voiceRecordingTarget == null) {
+                showAlert("Lỗi", "Không xác định được người nhận voice.", Alert.AlertType.ERROR);
+                return;
+            }
+
+            JsonObject payload = new JsonObject();
+            payload.addProperty("content", Base64.getEncoder().encodeToString(wavBytes));
+            payload.addProperty("type", "VOICE");
+            payload.addProperty("format", "WAV");
+            payload.addProperty("receiver", voiceRecordingTarget);
+
+            Packet chatPacket = new Packet("PRIVATE_MESSAGE", payload.toString());
+            ClientApplication.getChatClient().sendPacket(chatPacket);
+        } catch (Exception e) {
+            updateVoiceButton(false);
+            showAlert("Lỗi", "Không thể gửi voice.", Alert.AlertType.ERROR);
+        } finally {
+            voiceRecordingTarget = null;
+        }
+    }
+
+    private void updateVoiceButton(boolean recording) {
+        if (btnVoice == null) return;
+
+        if (recording) {
+            btnVoice.setText("⏹");
+            btnVoice.setStyle("-fx-font-size: 16px; -fx-background-color: #f44336; -fx-text-fill: white; -fx-cursor: hand;");
+        } else {
+            btnVoice.setText("🎤");
+            btnVoice.setStyle("-fx-font-size: 16px; -fx-background-color: #e0e0e0; -fx-cursor: hand;");
+        }
     }
 
     private void handleRecallMessage() {
@@ -661,14 +802,15 @@ public class ChatController {
             
             HBox oldContainer = (HBox) oldItem;
             Object userData = oldContainer.getUserData();
-            
-            // Allow editing only if it's text (we saved raw content as UserData for text)
-            if (userData == null || userData.toString().startsWith("/9j/")) { // "/9j/" is typical base64 prefix for images
+            MessageData oldData = userData instanceof MessageData ? (MessageData) userData : null;
+
+            // Allow editing only if it's text
+            if (oldData == null || !"TEXT".equals(oldData.type())) {
                 showAlert("Thông báo", "Chỉ hỗ trợ chỉnh sửa tin nhắn văn bản.", Alert.AlertType.WARNING);
                 return;
             }
-            
-            String oldContent = userData.toString();
+
+            String oldContent = oldData.content();
 
             TextInputDialog dialog = new TextInputDialog(oldContent);
             dialog.setTitle("Chỉnh sửa tin nhắn");
@@ -684,7 +826,7 @@ public class ChatController {
                     ClientApplication.getChatClient().sendPacket(new Packet("EDIT_MESSAGE", payload.toString()));
                     
                     HBox editedNode = createTextMessageNode("Bạn", newContent + " (Đã chỉnh sửa)", true);
-                    editedNode.setUserData(newContent); // Store new raw content
+                    editedNode.setUserData(new MessageData("TEXT", newContent, true)); // Store new raw content
                     listMessages.getItems().set(selectedIndex, editedNode);
                 }
             });

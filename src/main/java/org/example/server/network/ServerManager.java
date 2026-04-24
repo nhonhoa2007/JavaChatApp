@@ -59,6 +59,19 @@ public class ServerManager {
         }
     }
 
+    /**
+     * Lấy ClientHandler đang active của một username.
+     * Dùng để gọi handleLoadFriends trực tiếp cho target user thay vì gửi RELOAD_FRIENDS rồi đợi client reply lại.
+     */
+    public ClientHandler getClientHandler(String username) {
+        for (ClientHandler client : activeClients) {
+            if (username.equals(client.getCurrentUsername())) {
+                return client;
+            }
+        }
+        return null;
+    }
+
     public void broadcastPacket(Packet packet, ClientHandler excludeClient) {
         for (ClientHandler client : activeClients) {
             if (excludeClient == null || client != excludeClient) {

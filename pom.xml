@@ -29,6 +29,7 @@
             <version>${javafx.version}</version>
         </dependency>
 
+
         <!-- ControlsFX for Push Notifications/Popups in JavaFX -->
         <dependency>
             <groupId>org.controlsfx</groupId>

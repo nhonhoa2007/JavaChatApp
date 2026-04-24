@@ -43,7 +43,7 @@
 
             <HBox spacing="10.0" style="-fx-padding: 10; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0; -fx-background-color: #f9f9f9;" alignment="CENTER_LEFT">
                 <Button text="📷" onAction="#handleSendImage" style="-fx-font-size: 16px; -fx-background-color: #e0e0e0; -fx-cursor: hand;" />
-                <Button text="🎤" onAction="#handleSendVoice" style="-fx-font-size: 16px; -fx-background-color: #e0e0e0; -fx-cursor: hand;" />
+                <Button fx:id="btnVoice" text="🎤" onAction="#handleSendVoice" style="-fx-font-size: 16px; -fx-background-color: #e0e0e0; -fx-cursor: hand;" />
 
                 <TextArea fx:id="txtMessage" prefRowCount="2" HBox.hgrow="ALWAYS" promptText="Nhập tin nhắn..." style="-fx-background-radius: 5; -fx-border-radius: 5;" />
                 <Button text="Gửi" onAction="#handleSendMessage" prefHeight="40.0" prefWidth="80.0" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 5;" />

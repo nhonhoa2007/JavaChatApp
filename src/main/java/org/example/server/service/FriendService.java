@@ -39,32 +39,30 @@ public class FriendService {
                     
                     String blockedBy = f.getBlockedBy();
                     
-                    // Nếu mình BỊ CHẶN (tức là bạn kia nhấn chặn mình), 
-                    // mình sẽ KHÔNG thấy bạn kia trong danh sách nữa.
-                    if (blockedBy == null || !blockedBy.contains(friendUser.getUsername())) {
-                        JsonObject friendObj = new JsonObject();
-                        friendObj.addProperty("username", friendUser.getUsername());
-                        
-                        boolean isOnline = false;
-                        for(ClientHandler ch : serverManager.getActiveClients()) {
-                            if(friendUser.getUsername().equals(ch.getCurrentUsername())) {
-                                isOnline = true;
-                                break;
-                            }
+                    // Bây giờ cho phép hiển thị bạn bè ngay cả khi họ chặn mình
+                    // (chỉ không cho nhắn tin, để UI vẫn giữ được danh sách bạn bè).
+                    JsonObject friendObj = new JsonObject();
+                    friendObj.addProperty("username", friendUser.getUsername());
+                    
+                    boolean isOnline = false;
+                    for(ClientHandler ch : serverManager.getActiveClients()) {
+                        if(friendUser.getUsername().equals(ch.getCurrentUsername())) {
+                            isOnline = true;
+                            break;
                         }
-                        
-                        friendObj.addProperty("status", isOnline ? "ONLINE" : "OFFLINE");
-                        
-                        // Cung cấp thêm cờ cho UI biết MÌNH CÓ ĐANG CHẶN HỌ KHÔNG (để UI đổi nút thành "Bỏ chặn")
-                        boolean amIBlocking = blockedBy != null && blockedBy.contains(user.getUsername());
-                        friendObj.addProperty("isBlockedByMe", amIBlocking);
-                        
-                        String mutedBy = f.getMutedBy();
-                        boolean amIMuting = mutedBy != null && mutedBy.contains(user.getUsername());
-                        friendObj.addProperty("isMutedByMe", amIMuting);
-                        
-                        friendsArray.add(friendObj);
                     }
+                    
+                    friendObj.addProperty("status", isOnline ? "ONLINE" : "OFFLINE");
+                    
+                    // Cung cấp thêm cờ cho UI biết MÌNH CÓ ĐANG CHẶN HỌ KHÔNG (để UI đổi nút thành "Bỏ chặn")
+                    boolean amIBlocking = blockedBy != null && blockedBy.contains(user.getUsername());
+                    friendObj.addProperty("isBlockedByMe", amIBlocking);
+                    
+                    String mutedBy = f.getMutedBy();
+                    boolean amIMuting = mutedBy != null && mutedBy.contains(user.getUsername());
+                    friendObj.addProperty("isMutedByMe", amIMuting);
+                    
+                    friendsArray.add(friendObj);
                 }
             }
             responseJson.add("friends", friendsArray);
@@ -131,8 +129,12 @@ public class FriendService {
                 request.setStatus("ACCEPTED");
                 friendshipDAO.updateFriendship(request);
 
+                // Reload cho cả hai phía trực tiếp
                 handleLoadFriends(receiverClient);
-                serverManager.sendToClient(sender.getUsername(), new Packet("RELOAD_FRIENDS", ""));
+                ClientHandler senderHandler = serverManager.getClientHandler(senderUsername);
+                if (senderHandler != null) {
+                    handleLoadFriends(senderHandler);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -170,17 +172,20 @@ public class FriendService {
                     client.sendPacket(new Packet("BLOCK_SUCCESS", "Đã CHẶN người dùng " + targetUsername + ". Họ sẽ không thể nhắn tin cho bạn."));
                 }
 
-                // SỬ DỤNG MERGE ĐỂ UPDATE THAY VÌ HQL TRỰC TIẾP
-                // HQL update với tham số `null` có thể bị Hibernate từ chối do không xác định được kiểu dữ liệu
-                friendship.setBlockedBy(blockedBy);
-                friendshipDAO.updateFriendship(friendship);
-                
-                // Gửi lệnh Reload Friend cho CHÍNH MÌNH để update UI thành chữ "Bỏ chặn"
+                // Cập nhật DB
+                friendshipDAO.updateBlockStatus(user, target, blockedBy);
+
+                // Reload danh sách bạn bè cho NGƯỜI THỰC HIỆN CHẶN/BỎ CHẶN
                 handleLoadFriends(client);
-                
-                // Gửi lệnh cho Target để nó reload, nếu nó đang onl thì sẽ thấy mình bị biến mất (khi bị chặn)
-                // hoặc hiện lại (khi được bỏ chặn)
-                serverManager.sendToClient(target.getUsername(), new Packet("RELOAD_FRIENDS", ""));
+
+                // Push trực tiếp danh sách bạn bè mới cho TARGET nếu họ đang online.
+                // Dùng getClientHandler + handleLoadFriends thay vì RELOAD_FRIENDS để tránh
+                // race condition: client gửi LOAD_FRIENDS_REQUEST ngay sau khi nhận RELOAD_FRIENDS,
+                // server có thể chưa commit xong DB update ở thời điểm đó.
+                ClientHandler targetHandler = serverManager.getClientHandler(target.getUsername());
+                if (targetHandler != null) {
+                    handleLoadFriends(targetHandler);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -218,8 +223,8 @@ public class FriendService {
                     client.sendPacket(new Packet("MUTE_SUCCESS", "Đã TẮT thông báo từ " + targetUsername));
                 }
 
-                friendship.setMutedBy(mutedBy);
-                friendshipDAO.updateFriendship(friendship);
+                // Sử dụng hàm HQL thay vì merge
+                friendshipDAO.updateMuteStatus(user, target, mutedBy);
 
                 handleLoadFriends(client);
             }

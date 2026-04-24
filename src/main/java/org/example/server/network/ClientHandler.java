@@ -58,8 +58,8 @@ public class ClientHandler implements Runnable {
                 
             case "LOGIN_REQUEST":
                 authService.handleLogin(packet.getPayload(), this);
-                // Sau khi login xong, load bạn bè luôn
-                friendService.handleLoadFriends(this);
+                // Không load friends ở đây — client sẽ tự gửi LOAD_FRIENDS_REQUEST
+                // khi ChatController đã initialize xong và sẵn sàng nhận response.
                 break;
 
             case "LOAD_HISTORY_REQUEST":

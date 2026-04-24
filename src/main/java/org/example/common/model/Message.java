@@ -22,6 +22,11 @@ public class Message {
     @JoinColumn(name = "receiver_id")
     private User receiver;
 
+    // Group destination (null for private messages)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "group_id")
+    private GroupChat groupChat;
+
     // Could be TEXT, IMAGE, VOICE, VIDEO_LOG
     @Column(name = "message_type", length = 20, nullable = false)
     private String messageType;
@@ -55,6 +60,19 @@ public class Message {
     public Message(User sender, User receiver, String messageType, String content) {
         this.sender = sender;
         this.receiver = receiver;
+        this.groupChat = null;
+        this.messageType = messageType;
+        this.content = content;
+        this.sentAt = LocalDateTime.now();
+        this.isRead = false;
+        this.isRecalled = false;
+        this.isEdited = false;
+    }
+
+    public Message(User sender, GroupChat groupChat, String messageType, String content) {
+        this.sender = sender;
+        this.receiver = null;
+        this.groupChat = groupChat;
         this.messageType = messageType;
         this.content = content;
         this.sentAt = LocalDateTime.now();
@@ -85,6 +103,14 @@ public class Message {
 
     public void setReceiver(User receiver) {
         this.receiver = receiver;
+    }
+
+    public GroupChat getGroupChat() {
+        return groupChat;
+    }
+
+    public void setGroupChat(GroupChat groupChat) {
+        this.groupChat = groupChat;
     }
 
     public String getMessageType() {

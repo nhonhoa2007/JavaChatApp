@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -11,7 +13,6 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
@@ -28,8 +29,10 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import javax.sound.sampled.LineUnavailableException;
@@ -43,6 +46,9 @@ public class ChatController {
     private ListView<String> listRequests;
 
     @FXML
+    private ListView<String> listGroups;
+
+    @FXML
     private ListView<Object> listMessages;
 
     @FXML
@@ -50,6 +56,15 @@ public class ChatController {
 
     @FXML
     private TextField txtAddFriend;
+
+    @FXML
+    private TextField txtSearchFriend;
+
+    @FXML
+    private TextField txtGroupName;
+
+    @FXML
+    private TextField txtGroupMembers;
 
     @FXML
     private Label lblChatTitle;
@@ -65,13 +80,19 @@ public class ChatController {
 
     private String currentUsername;
     private final Map<Long, Integer> messageIdToIndexMap = new HashMap<>();
+    private final ObservableList<String> allFriendItems = FXCollections.observableArrayList();
+    private final Map<String, Long> groupDisplayToId = new HashMap<>();
+    private final Map<Long, String> messageConversationMap = new HashMap<>();
+    private final Map<Long, Label> reactionLabelMap = new HashMap<>();
 
     private final Map<String, Boolean> isBlockedByMeMap = new HashMap<>();
     private final Map<String, Boolean> isMutedByMeMap = new HashMap<>();
     private final VoiceRecorder voiceRecorder = new VoiceRecorder();
     private String voiceRecordingTarget;
+    private String voiceRecordingConversation;
+    private String currentConversationKey;
 
-    private record MessageData(String type, String content, boolean isMe) {}
+    private record MessageData(Long messageId, String type, String content, boolean isMe, String senderDisplay) {}
 
     private String extractUsername(String displayItem) {
         if (displayItem == null) return null;
@@ -83,23 +104,101 @@ public class ChatController {
         return displayItem;
     }
 
+    private String buildFriendDisplayText(String username, String status) {
+        return username + ("ONLINE".equals(status) ? " [Online]" : " [Offline]");
+    }
+
+    private String privateConversationKey(String username) {
+        return "PRIVATE:" + username;
+    }
+
+    private String groupConversationKey(long groupId) {
+        return "GROUP:" + groupId;
+    }
+
+    private Long extractGroupIdFromDisplay(String displayItem) {
+        return groupDisplayToId.get(displayItem);
+    }
+
+    private void clearChatPaneForConversation(String title) {
+        lblChatTitle.setText(title);
+        listMessages.getItems().clear();
+        messageIdToIndexMap.clear();
+        messageConversationMap.clear();
+        reactionLabelMap.clear();
+    }
+
+    private void applyFriendFilter() {
+        String selectedUsername = extractUsername(listUsers.getSelectionModel().getSelectedItem());
+        String keyword = txtSearchFriend == null ? "" : txtSearchFriend.getText().trim().toLowerCase();
+
+        listUsers.getItems().setAll(
+                allFriendItems.stream()
+                        .filter(item -> keyword.isEmpty() || extractUsername(item).toLowerCase().contains(keyword))
+                        .toList()
+        );
+
+        if (selectedUsername != null) {
+            for (String item : listUsers.getItems()) {
+                if (selectedUsername.equals(extractUsername(item))) {
+                    listUsers.getSelectionModel().select(item);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void updateFriendStatusInMaster(String username, String status) {
+        for (int i = 0; i < allFriendItems.size(); i++) {
+            String item = allFriendItems.get(i);
+            String actualUsername = extractUsername(item);
+            if (username.equals(actualUsername)) {
+                allFriendItems.set(i, buildFriendDisplayText(actualUsername, status));
+                return;
+            }
+        }
+    }
+
     public void initialize() {
         ClientApplication.getChatClient().setOnPacketReceived(this::handleServerResponse);
+
+        if (txtSearchFriend != null) {
+            txtSearchFriend.textProperty().addListener((obs, oldValue, newValue) -> applyFriendFilter());
+        }
         
         listUsers.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             String selectedUser = extractUsername(newValue);
             if (selectedUser != null) {
+                if (listGroups != null) {
+                    listGroups.getSelectionModel().clearSelection();
+                }
+                currentConversationKey = privateConversationKey(selectedUser);
                 lblChatTitle.setText("Chat với: " + selectedUser);
                 loadHistory(selectedUser);
                 updateControlButtons(selectedUser);
             } else {
-                lblChatTitle.setText("Chọn một người bạn để bắt đầu trò chuyện");
-                listMessages.getItems().clear();
-                messageIdToIndexMap.clear();
+                clearChatPaneForConversation("Chọn cuộc trò chuyện để bắt đầu");
+                currentConversationKey = null;
                 if (btnBlock != null) btnBlock.setVisible(true);
                 if (btnMute != null) btnMute.setVisible(false);
             }
         });
+
+        if (listGroups != null) {
+            listGroups.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+                if (newValue != null) {
+                    listUsers.getSelectionModel().clearSelection();
+                    Long groupId = extractGroupIdFromDisplay(newValue);
+                    if (groupId != null) {
+                        currentConversationKey = groupConversationKey(groupId);
+                        lblChatTitle.setText("Nhóm: " + newValue);
+                        loadGroupHistory(groupId);
+                        if (btnBlock != null) btnBlock.setVisible(false);
+                        if (btnMute != null) btnMute.setVisible(false);
+                    }
+                }
+            });
+        }
 
         setupMessageContextMenu();
         setupRequestContextMenu();
@@ -108,6 +207,7 @@ public class ChatController {
         // Trước đây server gửi LOAD_FRIENDS_SUCCESS ngay sau LOGIN_SUCCESS nhưng lúc đó
         // LoginController vẫn đang là handler → packet bị bỏ qua.
         ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
+        ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
     }
 
     private void updateControlButtons(String targetUser) {
@@ -155,15 +255,24 @@ public class ChatController {
     }
 
     private void setupMessageContextMenu() {
-        ContextMenu contextMenu = new ContextMenu();
-        
+        ContextMenu myMessageMenu = new ContextMenu();
+        ContextMenu otherMessageMenu = new ContextMenu();
+
         MenuItem recallItem = new MenuItem("Thu hồi tin nhắn");
         recallItem.setOnAction(e -> handleRecallMessage());
 
         MenuItem editItem = new MenuItem("Chỉnh sửa tin nhắn");
         editItem.setOnAction(e -> handleEditMessageUI());
 
-        contextMenu.getItems().addAll(editItem, recallItem);
+        Menu reactionMenuMine = buildReactionMenu();
+        Menu reactionMenuOther = buildReactionMenu();
+        MenuItem removeReactionMine = new MenuItem("Xóa cảm xúc");
+        removeReactionMine.setOnAction(e -> handleRemoveReaction());
+        MenuItem removeReactionOther = new MenuItem("Xóa cảm xúc");
+        removeReactionOther.setOnAction(e -> handleRemoveReaction());
+
+        myMessageMenu.getItems().addAll(editItem, recallItem, new SeparatorMenuItem(), reactionMenuMine, removeReactionMine);
+        otherMessageMenu.getItems().addAll(reactionMenuOther, removeReactionOther);
 
         listMessages.setCellFactory(lv -> {
             return new ListCell<Object>() {
@@ -182,9 +291,9 @@ public class ChatController {
                         
                         // Check alignment to set context menu for "Bạn"
                         if (container.getAlignment() == Pos.CENTER_RIGHT) {
-                            setContextMenu(contextMenu);
+                            setContextMenu(myMessageMenu);
                         } else {
-                            setContextMenu(null);
+                            setContextMenu(otherMessageMenu);
                         }
                         setStyle("-fx-background-color: transparent; -fx-padding: 5px;");
                     }
@@ -193,13 +302,37 @@ public class ChatController {
         });
     }
 
+    private Menu buildReactionMenu() {
+        Menu reactionMenu = new Menu("Thả cảm xúc");
+        List<String> emojis = Arrays.asList("👍", "❤️", "😂", "😮", "😢", "🎉");
+        for (String emoji : emojis) {
+            MenuItem item = new MenuItem(emoji);
+            item.setOnAction(e -> handleSetReaction(emoji));
+            reactionMenu.getItems().add(item);
+        }
+        return reactionMenu;
+    }
+
     private void loadHistory(String otherUser) {
         listMessages.getItems().clear();
         messageIdToIndexMap.clear();
+        messageConversationMap.clear();
+        reactionLabelMap.clear();
         JsonObject payload = new JsonObject();
         payload.addProperty("otherUser", otherUser);
         payload.addProperty("limit", 50); // Lấy 50 tin nhắn gần nhất
         ClientApplication.getChatClient().sendPacket(new Packet("LOAD_HISTORY_REQUEST", payload.toString()));
+    }
+
+    private void loadGroupHistory(long groupId) {
+        listMessages.getItems().clear();
+        messageIdToIndexMap.clear();
+        messageConversationMap.clear();
+        reactionLabelMap.clear();
+        JsonObject payload = new JsonObject();
+        payload.addProperty("groupId", groupId);
+        payload.addProperty("limit", 50);
+        ClientApplication.getChatClient().sendPacket(new Packet("GROUP_HISTORY_REQUEST", payload.toString()));
     }
 
     public void initData(String username) {
@@ -214,6 +347,21 @@ public class ChatController {
                     break;
                 case "LOAD_FRIENDS_SUCCESS":
                     handleLoadFriendsSuccess(packet.getPayload());
+                    break;
+                case "GROUP_LIST":
+                    handleGroupList(packet.getPayload());
+                    break;
+                case "GROUP_LIST_UPDATED":
+                    ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
+                    break;
+                case "GROUP_SUCCESS":
+                    showAlert("Thông báo", packet.getPayload(), Alert.AlertType.INFORMATION);
+                    if (txtGroupName != null) txtGroupName.clear();
+                    if (txtGroupMembers != null) txtGroupMembers.clear();
+                    ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
+                    break;
+                case "GROUP_ERROR":
+                    showAlert("Lỗi nhóm", packet.getPayload(), Alert.AlertType.ERROR);
                     break;
                 case "FRIEND_REQUEST":
                     handleNewFriendRequest(packet.getPayload());
@@ -235,17 +383,29 @@ public class ChatController {
                 case "CHAT_HISTORY":
                     handleChatHistory(packet.getPayload());
                     break;
+                case "GROUP_HISTORY":
+                    handleGroupHistory(packet.getPayload());
+                    break;
                 case "CHAT_ACK":
                     handleChatAck(packet.getPayload());
                     break;
+                case "GROUP_MESSAGE_ACK":
+                    handleGroupMessageAck(packet.getPayload());
+                    break;
                 case "CHAT_MESSAGE":
                     handleIncomingMessage(packet.getPayload());
+                    break;
+                case "GROUP_MESSAGE":
+                    handleIncomingGroupMessage(packet.getPayload());
                     break;
                 case "MESSAGE_RECALLED":
                     handleMessageRecalled(packet.getPayload());
                     break;
                 case "MESSAGE_EDITED":
                     handleMessageEdited(packet.getPayload());
+                    break;
+                case "REACTION_UPDATED":
+                    handleReactionUpdated(packet.getPayload());
                     break;
                 case "CHAT_ERROR":
                     showAlert("Lỗi Gửi Tin", packet.getPayload(), Alert.AlertType.ERROR);
@@ -262,7 +422,7 @@ public class ChatController {
         String selectedItem = listUsers.getSelectionModel().getSelectedItem();
         String actualSelected = extractUsername(selectedItem);
 
-        listUsers.getItems().clear();
+        allFriendItems.clear();
         isBlockedByMeMap.clear();
         isMutedByMeMap.clear();
 
@@ -278,16 +438,22 @@ public class ChatController {
                 isMutedByMeMap.put(username, f.get("isMutedByMe").getAsBoolean());
             }
 
-            String displayText = username + (status.equals("ONLINE") ? " [Online]" : " [Offline]");
-            listUsers.getItems().add(displayText);
+            allFriendItems.add(buildFriendDisplayText(username, status));
         }
+
+        applyFriendFilter();
 
         // Logic check lại sau khi load xong danh sách mới
         if (actualSelected != null) {
             boolean stillExists = false;
-            for(String item : listUsers.getItems()) {
+            for(String item : allFriendItems) {
                 if(extractUsername(item).equals(actualSelected)) {
-                    listUsers.getSelectionModel().select(item);
+                    for (String visibleItem : listUsers.getItems()) {
+                        if (extractUsername(visibleItem).equals(actualSelected)) {
+                            listUsers.getSelectionModel().select(visibleItem);
+                            break;
+                        }
+                    }
                     updateControlButtons(actualSelected);
                     stillExists = true;
                     break;
@@ -295,8 +461,7 @@ public class ChatController {
             }
             
             if(!stillExists) {
-                listMessages.getItems().clear();
-                messageIdToIndexMap.clear();
+                clearChatPaneForConversation("Người dùng không còn tồn tại trong danh sách bạn bè");
                 lblChatTitle.setText("Người dùng không còn tồn tại trong danh sách bạn bè");
                 if (btnBlock != null) btnBlock.setVisible(false);
                 if (btnMute != null) btnMute.setVisible(false);
@@ -323,23 +488,120 @@ public class ChatController {
         if (parts.length == 2) {
             String user = parts[0];
             String status = parts[1];
-            
-            for (int i = 0; i < listUsers.getItems().size(); i++) {
-                String item = listUsers.getItems().get(i);
-                String actualUsername = extractUsername(item);
-                if (actualUsername != null && actualUsername.equals(user)) {
-                    String newDisplayText = actualUsername + (status.equals("ONLINE") ? " [Online]" : " [Offline]");
-                    
-                    boolean isSelected = listUsers.getSelectionModel().getSelectedIndex() == i;
-                    
-                    listUsers.getItems().set(i, newDisplayText);
-                    
-                    if (isSelected) {
-                        listUsers.getSelectionModel().select(i);
+
+            String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
+            updateFriendStatusInMaster(user, status);
+            applyFriendFilter();
+
+            if (selectedUser != null) {
+                for (String item : listUsers.getItems()) {
+                    if (selectedUser.equals(extractUsername(item))) {
+                        listUsers.getSelectionModel().select(item);
+                        break;
                     }
-                    break;
                 }
             }
+        }
+    }
+
+    private void handleGroupList(String payload) {
+        if (listGroups == null) {
+            return;
+        }
+
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        JsonArray groups = json.getAsJsonArray("groups");
+
+        String selected = listGroups.getSelectionModel().getSelectedItem();
+        listGroups.getItems().clear();
+        groupDisplayToId.clear();
+
+        for (int i = 0; i < groups.size(); i++) {
+            JsonObject g = groups.get(i).getAsJsonObject();
+            long groupId = g.get("groupId").getAsLong();
+            String name = g.get("groupName").getAsString();
+            int memberCount = g.get("memberCount").getAsInt();
+            String display = name + " (" + memberCount + ")";
+            listGroups.getItems().add(display);
+            groupDisplayToId.put(display, groupId);
+        }
+
+        if (selected != null && groupDisplayToId.containsKey(selected)) {
+            listGroups.getSelectionModel().select(selected);
+        }
+    }
+
+    private void handleGroupHistory(String payload) {
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        long groupId = json.get("groupId").getAsLong();
+        String expectedConversation = groupConversationKey(groupId);
+        if (!expectedConversation.equals(currentConversationKey)) {
+            return;
+        }
+
+        JsonArray messages = json.getAsJsonArray("messages");
+        for (int i = 0; i < messages.size(); i++) {
+            JsonObject msg = messages.get(i).getAsJsonObject();
+            long id = msg.get("id").getAsLong();
+            String sender = msg.get("sender").getAsString();
+            String content = msg.get("content").getAsString();
+            String type = msg.get("type").getAsString();
+            boolean isMe = "Bạn".equals(sender);
+
+            HBox node = createMessageNodeByType(id, sender, content, isMe, type, msg.has("reactions") ? msg.getAsJsonArray("reactions") : null);
+            listMessages.getItems().add(node);
+            messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
+            messageConversationMap.put(id, expectedConversation);
+        }
+    }
+
+    private void handleGroupMessageAck(String payload) {
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        long messageId = json.get("id").getAsLong();
+        long groupId = json.get("groupId").getAsLong();
+        String conversationKey = groupConversationKey(groupId);
+
+        if (!conversationKey.equals(currentConversationKey)) {
+            return;
+        }
+
+        String content = json.get("content").getAsString();
+        String type = json.has("type") ? json.get("type").getAsString() : "TEXT";
+        HBox node = createMessageNodeByType(messageId, "Bạn", content, true, type, json.has("reactions") ? json.getAsJsonArray("reactions") : null);
+        listMessages.getItems().add(node);
+        messageIdToIndexMap.put(messageId, listMessages.getItems().size() - 1);
+        messageConversationMap.put(messageId, conversationKey);
+    }
+
+    private void handleIncomingGroupMessage(String payload) {
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        long groupId = json.get("groupId").getAsLong();
+        String conversationKey = groupConversationKey(groupId);
+
+        long messageId = json.get("id").getAsLong();
+        String sender = json.get("sender").getAsString();
+        String content = json.get("content").getAsString();
+        String type = json.has("type") ? json.get("type").getAsString() : "TEXT";
+
+        if (conversationKey.equals(currentConversationKey)) {
+            HBox node = createMessageNodeByType(messageId, sender, content, false, type, json.has("reactions") ? json.getAsJsonArray("reactions") : null);
+            listMessages.getItems().add(node);
+            messageIdToIndexMap.put(messageId, listMessages.getItems().size() - 1);
+            messageConversationMap.put(messageId, conversationKey);
+        }
+        showPushNotification("Nhóm", sender + ": " + ("TEXT".equals(type) ? content : "[" + type + "]"));
+    }
+
+    private void handleReactionUpdated(String payload) {
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        long messageId = json.get("messageId").getAsLong();
+        String conversationKey = messageConversationMap.get(messageId);
+        if (conversationKey != null && !conversationKey.equals(currentConversationKey)) {
+            return;
+        }
+        Label reactionLabel = reactionLabelMap.get(messageId);
+        if (reactionLabel != null) {
+            reactionLabel.setText(formatReactionSummary(json.getAsJsonArray("reactions")));
         }
     }
 
@@ -351,6 +613,33 @@ public class ChatController {
         JsonObject payload = new JsonObject();
         payload.addProperty("friendUsername", friendUsername);
         ClientApplication.getChatClient().sendPacket(new Packet("ADD_FRIEND_REQUEST", payload.toString()));
+    }
+
+    @FXML
+    public void handleCreateGroup(ActionEvent event) {
+        if (txtGroupName == null || txtGroupMembers == null) {
+            return;
+        }
+
+        String groupName = txtGroupName.getText().trim();
+        String rawMembers = txtGroupMembers.getText().trim();
+
+        if (groupName.isEmpty() || rawMembers.isEmpty()) {
+            showAlert("Thông báo", "Vui lòng nhập tên nhóm và danh sách thành viên.", Alert.AlertType.WARNING);
+            return;
+        }
+
+        JsonArray members = new JsonArray();
+        Arrays.stream(rawMembers.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .forEach(members::add);
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("groupName", groupName);
+        payload.add("members", members);
+        ClientApplication.getChatClient().sendPacket(new Packet("CREATE_GROUP_REQUEST", payload.toString()));
     }
 
     private void handleAcceptFriend() {
@@ -405,8 +694,9 @@ public class ChatController {
             String type = msg.get("type").getAsString();
             
             boolean isMe = sender.equals("Bạn");
-            listMessages.getItems().add(createMessageNodeByType(sender, content, isMe, type));
+            listMessages.getItems().add(createMessageNodeByType(id, sender, content, isMe, type, msg.has("reactions") ? msg.getAsJsonArray("reactions") : null));
             messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
+            messageConversationMap.put(id, privateConversationKey(otherUser));
         }
     }
 
@@ -415,10 +705,21 @@ public class ChatController {
         long messageId = json.get("id").getAsLong();
         String content = json.get("content").getAsString();
         String type = json.has("type") ? json.get("type").getAsString() : "TEXT";
-        
-        listMessages.getItems().add(createMessageNodeByType("Bạn", content, true, type));
+        String receiver = json.has("receiver") ? json.get("receiver").getAsString() : null;
+
+        if (receiver == null) {
+            return;
+        }
+
+        String conversationKey = privateConversationKey(receiver);
+        if (!conversationKey.equals(currentConversationKey)) {
+            return;
+        }
+
+        listMessages.getItems().add(createMessageNodeByType(messageId, "Bạn", content, true, type, json.has("reactions") ? json.getAsJsonArray("reactions") : null));
 
         messageIdToIndexMap.put(messageId, listMessages.getItems().size() - 1);
+        messageConversationMap.put(messageId, conversationKey);
     }
 
     private void handleIncomingMessage(String payload) {
@@ -429,11 +730,13 @@ public class ChatController {
         
         String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
         if (selectedUser != null && selectedUser.equals(sender)) {
-            listMessages.getItems().add(createMessageNodeByType(sender, content, false, type));
-
             if (json.has("id")) {
                 long messageId = json.get("id").getAsLong();
+                listMessages.getItems().add(createMessageNodeByType(messageId, sender, content, false, type, json.has("reactions") ? json.getAsJsonArray("reactions") : null));
                 messageIdToIndexMap.put(messageId, listMessages.getItems().size() - 1);
+                messageConversationMap.put(messageId, privateConversationKey(sender));
+            } else {
+                listMessages.getItems().add(createMessageNodeByType(null, sender, content, false, type, null));
             }
         }
 
@@ -451,18 +754,18 @@ public class ChatController {
         }
     }
 
-    private HBox createMessageNodeByType(String sender, String content, boolean isMe, String type) {
+    private HBox createMessageNodeByType(Long messageId, String sender, String content, boolean isMe, String type, JsonArray reactions) {
         if ("IMAGE".equals(type)) {
-            return createImageMessageNode(sender, content, isMe);
+            return createImageMessageNode(messageId, sender, content, isMe, reactions);
         }
         if ("VOICE".equals(type)) {
-            return createVoiceMessageNode(sender, content, isMe);
+            return createVoiceMessageNode(messageId, sender, content, isMe, reactions);
         }
-        return createTextMessageNode(sender, content, isMe);
+        return createTextMessageNode(messageId, sender, content, isMe, reactions);
     }
 
     // Helper method to create a modern text message UI node
-    private HBox createTextMessageNode(String sender, String content, boolean isMe) {
+    private HBox createTextMessageNode(Long messageId, String sender, String content, boolean isMe, JsonArray reactions) {
         HBox container = new HBox();
         container.setSpacing(10);
         
@@ -493,15 +796,17 @@ public class ChatController {
             messageBox.getChildren().addAll(senderLabel, textFlow);
         }
 
-        // Store the original text as user data for context menu retrieval
-        container.setUserData(new MessageData("TEXT", content, isMe));
+        Label reactionLabel = createReactionLabel(messageId, reactions);
+        messageBox.getChildren().add(reactionLabel);
+
+        container.setUserData(new MessageData(messageId, "TEXT", content, isMe, sender));
 
         container.getChildren().add(messageBox);
         return container;
     }
 
     // Helper method to create a modern image message UI node
-    private HBox createImageMessageNode(String sender, String base64Content, boolean isMe) {
+    private HBox createImageMessageNode(Long messageId, String sender, String base64Content, boolean isMe, JsonArray reactions) {
         HBox container = new HBox();
         container.setSpacing(10);
         
@@ -538,12 +843,15 @@ public class ChatController {
             messageBox.getChildren().add(errorLabel);
         }
 
-        container.setUserData(new MessageData("IMAGE", base64Content, isMe));
+        Label reactionLabel = createReactionLabel(messageId, reactions);
+        messageBox.getChildren().add(reactionLabel);
+
+        container.setUserData(new MessageData(messageId, "IMAGE", base64Content, isMe, sender));
         container.getChildren().add(messageBox);
         return container;
     }
 
-    private HBox createVoiceMessageNode(String sender, String base64Content, boolean isMe) {
+    private HBox createVoiceMessageNode(Long messageId, String sender, String base64Content, boolean isMe, JsonArray reactions) {
         HBox container = new HBox();
         container.setSpacing(10);
 
@@ -578,9 +886,39 @@ public class ChatController {
             messageBox.getChildren().addAll(senderLabel, voiceBox);
         }
 
-        container.setUserData(new MessageData("VOICE", base64Content, isMe));
+        Label reactionLabel = createReactionLabel(messageId, reactions);
+        messageBox.getChildren().add(reactionLabel);
+
+        container.setUserData(new MessageData(messageId, "VOICE", base64Content, isMe, sender));
         container.getChildren().add(messageBox);
         return container;
+    }
+
+    private Label createReactionLabel(Long messageId, JsonArray reactions) {
+        Label reactionLabel = new Label(formatReactionSummary(reactions));
+        reactionLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #666;");
+        if (messageId != null) {
+            reactionLabelMap.put(messageId, reactionLabel);
+        }
+        return reactionLabel;
+    }
+
+    private String formatReactionSummary(JsonArray reactions) {
+        if (reactions == null || reactions.size() == 0) {
+            return "";
+        }
+
+        StringBuilder summary = new StringBuilder();
+        for (int i = 0; i < reactions.size(); i++) {
+            JsonObject item = reactions.get(i).getAsJsonObject();
+            if (i > 0) {
+                summary.append("  ");
+            }
+            summary.append(item.get("emoji").getAsString())
+                    .append(" ")
+                    .append(item.get("count").getAsInt());
+        }
+        return summary.toString();
     }
 
     private void playVoiceMessage(String base64Content) {
@@ -597,6 +935,10 @@ public class ChatController {
     private void handleMessageRecalled(String payload) {
         JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
         long messageId = json.get("messageId").getAsLong();
+        String conversationKey = messageConversationMap.get(messageId);
+        if (conversationKey != null && !conversationKey.equals(currentConversationKey)) {
+            return;
+        }
 
         if (messageIdToIndexMap.containsKey(messageId)) {
             int index = messageIdToIndexMap.get(messageId);
@@ -605,9 +947,10 @@ public class ChatController {
                 if (oldItem instanceof HBox) {
                     HBox oldContainer = (HBox) oldItem;
                     boolean isMe = oldContainer.getAlignment() == Pos.CENTER_RIGHT;
-                    String sender = isMe ? "Bạn" : "Người dùng";
-                    
-                    HBox recalledNode = createTextMessageNode(sender, "🚫 Tin nhắn đã bị thu hồi", isMe);
+                    MessageData oldData = oldContainer.getUserData() instanceof MessageData ? (MessageData) oldContainer.getUserData() : null;
+                    String sender = oldData != null ? oldData.senderDisplay() : (isMe ? "Bạn" : "Người dùng");
+
+                    HBox recalledNode = createTextMessageNode(messageId, sender, "🚫 Tin nhắn đã bị thu hồi", isMe, null);
                     listMessages.getItems().set(index, recalledNode);
                 }
             }
@@ -618,6 +961,10 @@ public class ChatController {
         JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
         long messageId = json.get("messageId").getAsLong();
         String newContent = json.get("newContent").getAsString();
+        String conversationKey = messageConversationMap.get(messageId);
+        if (conversationKey != null && !conversationKey.equals(currentConversationKey)) {
+            return;
+        }
 
         if (messageIdToIndexMap.containsKey(messageId)) {
             int index = messageIdToIndexMap.get(messageId);
@@ -632,11 +979,11 @@ public class ChatController {
                     }
 
                     boolean isMe = oldContainer.getAlignment() == Pos.CENTER_RIGHT;
-                    String sender = isMe ? "Bạn" : "Người dùng"; // Simplified
-                    
-                    HBox editedNode = createTextMessageNode(sender, newContent + " (Đã chỉnh sửa)", isMe);
+                    String sender = oldData.senderDisplay();
+
+                    HBox editedNode = createTextMessageNode(messageId, sender, newContent + " (Đã chỉnh sửa)", isMe, null);
                     // Store original un-appended newContent for further edits
-                    editedNode.setUserData(new MessageData("TEXT", newContent, isMe));
+                    editedNode.setUserData(new MessageData(messageId, "TEXT", newContent, isMe, sender));
                     listMessages.getItems().set(index, editedNode);
                 }
             }
@@ -657,8 +1004,16 @@ public class ChatController {
             payload.addProperty("receiver", selectedUser);
             Packet chatPacket = new Packet("PRIVATE_MESSAGE", payload.toString());
             ClientApplication.getChatClient().sendPacket(chatPacket);
+        } else if (listGroups != null && listGroups.getSelectionModel().getSelectedItem() != null) {
+            Long groupId = extractGroupIdFromDisplay(listGroups.getSelectionModel().getSelectedItem());
+            if (groupId == null) {
+                showAlert("Thông báo", "Không xác định được nhóm chat.", Alert.AlertType.WARNING);
+                return;
+            }
+            payload.addProperty("groupId", groupId);
+            ClientApplication.getChatClient().sendPacket(new Packet("GROUP_MESSAGE", payload.toString()));
         } else {
-            showAlert("Thông báo", "Vui lòng chọn một người bạn để gửi tin nhắn.", Alert.AlertType.WARNING);
+            showAlert("Thông báo", "Vui lòng chọn bạn bè hoặc nhóm để gửi tin nhắn.", Alert.AlertType.WARNING);
         }
         
         txtMessage.clear();
@@ -667,8 +1022,11 @@ public class ChatController {
     @FXML
     public void handleSendImage(ActionEvent event) {
         String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
-        if (selectedUser == null) {
-            showAlert("Thông báo", "Vui lòng chọn một người bạn để gửi ảnh.", Alert.AlertType.WARNING);
+        String selectedGroupDisplay = listGroups != null ? listGroups.getSelectionModel().getSelectedItem() : null;
+        Long selectedGroupId = selectedGroupDisplay != null ? extractGroupIdFromDisplay(selectedGroupDisplay) : null;
+
+        if (selectedUser == null && selectedGroupId == null) {
+            showAlert("Thông báo", "Vui lòng chọn bạn bè hoặc nhóm để gửi ảnh.", Alert.AlertType.WARNING);
             return;
         }
 
@@ -692,9 +1050,14 @@ public class ChatController {
                 JsonObject payload = new JsonObject();
                 payload.addProperty("content", encodedString);
                 payload.addProperty("type", "IMAGE");
-                payload.addProperty("receiver", selectedUser);
-
-                Packet chatPacket = new Packet("PRIVATE_MESSAGE", payload.toString());
+                Packet chatPacket;
+                if (selectedUser != null) {
+                    payload.addProperty("receiver", selectedUser);
+                    chatPacket = new Packet("PRIVATE_MESSAGE", payload.toString());
+                } else {
+                    payload.addProperty("groupId", selectedGroupId);
+                    chatPacket = new Packet("GROUP_MESSAGE", payload.toString());
+                }
                 ClientApplication.getChatClient().sendPacket(chatPacket);
                 
             } catch (IOException e) {
@@ -707,16 +1070,19 @@ public class ChatController {
     @FXML
     public void handleSendVoice(ActionEvent event) {
         String selectedUser = extractUsername(listUsers.getSelectionModel().getSelectedItem());
+        String selectedGroupDisplay = listGroups != null ? listGroups.getSelectionModel().getSelectedItem() : null;
+        Long selectedGroupId = selectedGroupDisplay != null ? extractGroupIdFromDisplay(selectedGroupDisplay) : null;
 
         if (!voiceRecorder.isRecording()) {
-            if (selectedUser == null) {
-                showAlert("Thông báo", "Vui lòng chọn một người bạn để gửi voice.", Alert.AlertType.WARNING);
+            if (selectedUser == null && selectedGroupId == null) {
+                showAlert("Thông báo", "Vui lòng chọn bạn bè hoặc nhóm để gửi voice.", Alert.AlertType.WARNING);
                 return;
             }
 
             try {
                 if (voiceRecorder.start()) {
                     voiceRecordingTarget = selectedUser;
+                    voiceRecordingConversation = selectedGroupId == null ? null : String.valueOf(selectedGroupId);
                     updateVoiceButton(true);
                 }
             } catch (LineUnavailableException e) {
@@ -741,23 +1107,31 @@ public class ChatController {
             }
 
             if (voiceRecordingTarget == null) {
-                showAlert("Lỗi", "Không xác định được người nhận voice.", Alert.AlertType.ERROR);
-                return;
+                if (voiceRecordingConversation == null) {
+                    showAlert("Lỗi", "Không xác định được người nhận voice.", Alert.AlertType.ERROR);
+                    return;
+                }
             }
 
             JsonObject payload = new JsonObject();
             payload.addProperty("content", Base64.getEncoder().encodeToString(wavBytes));
             payload.addProperty("type", "VOICE");
             payload.addProperty("format", "WAV");
-            payload.addProperty("receiver", voiceRecordingTarget);
-
-            Packet chatPacket = new Packet("PRIVATE_MESSAGE", payload.toString());
+            Packet chatPacket;
+            if (voiceRecordingTarget != null) {
+                payload.addProperty("receiver", voiceRecordingTarget);
+                chatPacket = new Packet("PRIVATE_MESSAGE", payload.toString());
+            } else {
+                payload.addProperty("groupId", Long.parseLong(voiceRecordingConversation));
+                chatPacket = new Packet("GROUP_MESSAGE", payload.toString());
+            }
             ClientApplication.getChatClient().sendPacket(chatPacket);
         } catch (Exception e) {
             updateVoiceButton(false);
             showAlert("Lỗi", "Không thể gửi voice.", Alert.AlertType.ERROR);
         } finally {
             voiceRecordingTarget = null;
+            voiceRecordingConversation = null;
         }
     }
 
@@ -784,11 +1158,44 @@ public class ChatController {
             ClientApplication.getChatClient().sendPacket(new Packet("RECALL_MESSAGE", payload.toString()));
             
             // Update local UI immediately
-            HBox recalledNode = createTextMessageNode("Bạn", "🚫 Tin nhắn đã bị thu hồi", true);
+            HBox recalledNode = createTextMessageNode(messageIdToRecall, "Bạn", "🚫 Tin nhắn đã bị thu hồi", true, null);
             listMessages.getItems().set(selectedIndex, recalledNode);
         } else {
             showAlert("Không thể thu hồi", "Tin nhắn này không hỗ trợ thu hồi (chưa có ID từ Server).", Alert.AlertType.WARNING);
         }
+    }
+
+    private void handleSetReaction(String emoji) {
+        int selectedIndex = listMessages.getSelectionModel().getSelectedIndex();
+        if (selectedIndex == -1) {
+            return;
+        }
+
+        Long messageId = findMessageIdByIndex(selectedIndex);
+        if (messageId == null) {
+            return;
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("messageId", messageId);
+        payload.addProperty("emoji", emoji);
+        ClientApplication.getChatClient().sendPacket(new Packet("REACTION_SET_REQUEST", payload.toString()));
+    }
+
+    private void handleRemoveReaction() {
+        int selectedIndex = listMessages.getSelectionModel().getSelectedIndex();
+        if (selectedIndex == -1) {
+            return;
+        }
+
+        Long messageId = findMessageIdByIndex(selectedIndex);
+        if (messageId == null) {
+            return;
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("messageId", messageId);
+        ClientApplication.getChatClient().sendPacket(new Packet("REACTION_REMOVE_REQUEST", payload.toString()));
     }
 
     private void handleEditMessageUI() {
@@ -825,8 +1232,8 @@ public class ChatController {
                     payload.addProperty("newContent", newContent);
                     ClientApplication.getChatClient().sendPacket(new Packet("EDIT_MESSAGE", payload.toString()));
                     
-                    HBox editedNode = createTextMessageNode("Bạn", newContent + " (Đã chỉnh sửa)", true);
-                    editedNode.setUserData(new MessageData("TEXT", newContent, true)); // Store new raw content
+                    HBox editedNode = createTextMessageNode(messageIdToEdit, "Bạn", newContent + " (Đã chỉnh sửa)", true, null);
+                    editedNode.setUserData(new MessageData(messageIdToEdit, "TEXT", newContent, true, "Bạn"));
                     listMessages.getItems().set(selectedIndex, editedNode);
                 }
             });

@@ -11,7 +11,6 @@ import org.example.client.network.ChatClient;
 public class ClientApplication extends Application {
 
     private static ChatClient chatClient;
-
     public static void main(String[] args) {
         launch(args);
     }

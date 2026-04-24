@@ -24,6 +24,9 @@
         <mapping class="org.example.common.model.User"/>
         <mapping class="org.example.common.model.Message"/>
         <mapping class="org.example.common.model.Friendship"/>
+        <mapping class="org.example.common.model.GroupChat"/>
+        <mapping class="org.example.common.model.GroupMember"/>
+        <mapping class="org.example.common.model.MessageReaction"/>
 
     </session-factory>
 </hibernate-configuration>

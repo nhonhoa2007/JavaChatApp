@@ -1,6 +1,7 @@
 package org.example.server.dao;
 
 import org.example.common.model.Message;
+import org.example.common.model.GroupChat;
 import org.example.common.model.User;
 import org.example.server.util.HibernateUtil;
 import org.hibernate.Session;
@@ -59,6 +60,21 @@ public class MessageDAO {
             Query<Message> query = session.createQuery(hql, Message.class);
             query.setParameter("u1", user1);
             query.setParameter("u2", user2);
+            if (limit > 0) {
+                query.setMaxResults(limit);
+            }
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public List<Message> getGroupHistory(GroupChat groupChat, int limit) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM Message m WHERE m.groupChat.id = :groupId ORDER BY m.sentAt ASC";
+            Query<Message> query = session.createQuery(hql, Message.class);
+            query.setParameter("groupId", groupChat.getId());
             if (limit > 0) {
                 query.setMaxResults(limit);
             }

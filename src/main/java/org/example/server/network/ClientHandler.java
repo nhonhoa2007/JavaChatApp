@@ -65,11 +65,27 @@ public class ClientHandler implements Runnable {
             case "LOAD_HISTORY_REQUEST":
                 chatService.handleLoadHistory(packet.getPayload(), this);
                 break;
-                
+
+            case "GROUP_HISTORY_REQUEST":
+                chatService.handleLoadGroupHistory(packet.getPayload(), this);
+                break;
+
             case "PRIVATE_MESSAGE":
                 chatService.handlePrivateMessage(packet.getPayload(), this);
                 break;
-                
+
+            case "GROUP_MESSAGE":
+                chatService.handleGroupMessage(packet.getPayload(), this);
+                break;
+
+            case "CREATE_GROUP_REQUEST":
+                chatService.handleCreateGroup(packet.getPayload(), this);
+                break;
+
+            case "GROUP_LIST_REQUEST":
+                chatService.handleLoadGroups(this);
+                break;
+
             case "BROADCAST_MESSAGE":
                 chatService.handleBroadcastMessage(packet.getPayload(), this);
                 break;
@@ -80,6 +96,14 @@ public class ClientHandler implements Runnable {
 
             case "EDIT_MESSAGE":
                 messageService.handleEditMessage(packet.getPayload(), this);
+                break;
+
+            case "REACTION_SET_REQUEST":
+                messageService.handleSetReaction(packet.getPayload(), this);
+                break;
+
+            case "REACTION_REMOVE_REQUEST":
+                messageService.handleRemoveReaction(packet.getPayload(), this);
                 break;
 
             case "ADD_FRIEND_REQUEST":

@@ -84,4 +84,20 @@ public class MessageDAO {
             return null;
         }
     }
+
+    public List<Message> getConversationMessages(User user) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM Message m WHERE " +
+                    "(m.receiver IS NOT NULL AND (m.sender.id = :userId OR m.receiver.id = :userId)) " +
+                    "OR (m.groupChat IS NOT NULL AND m.groupChat.id IN " +
+                    "(SELECT gm.groupChat.id FROM GroupMember gm WHERE gm.user.id = :userId)) " +
+                    "ORDER BY m.sentAt DESC";
+            Query<Message> query = session.createQuery(hql, Message.class);
+            query.setParameter("userId", user.getId());
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
 }

@@ -18,7 +18,9 @@ import org.example.server.network.ClientHandler;
 import org.example.server.network.ServerManager;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class ChatService {
@@ -182,6 +184,54 @@ public class ChatService {
         }
     }
 
+    public void handleLoadConversations(ClientHandler client) {
+        try {
+            User currentUser = userDAO.findByUsername(client.getCurrentUsername());
+            if (currentUser == null) {
+                return;
+            }
+
+            Map<String, JsonObject> conversations = new LinkedHashMap<>();
+            for (Message message : messageDAO.getConversationMessages(currentUser)) {
+                if (message.getReceiver() != null) {
+                    User otherUser = message.getSender().getId().equals(currentUser.getId())
+                            ? message.getReceiver()
+                            : message.getSender();
+                    String key = "PRIVATE:" + otherUser.getUsername();
+                    conversations.putIfAbsent(key, toConversationJson(
+                            key,
+                            "PRIVATE",
+                            otherUser.getUsername(),
+                            previewMessage(message),
+                            message.getSentAt().toString()
+                    ));
+                } else if (message.getGroupChat() != null) {
+                    GroupChat groupChat = message.getGroupChat();
+                    String key = "GROUP:" + groupChat.getId();
+                    String title = groupChat.getName() + " (" + groupMemberDAO.getMembers(groupChat).size() + ")";
+                    conversations.putIfAbsent(key, toConversationJson(
+                            key,
+                            "GROUP",
+                            title,
+                            message.getSender().getUsername() + ": " + previewMessage(message),
+                            message.getSentAt().toString()
+                    ));
+                }
+            }
+
+            JsonArray conversationsArray = new JsonArray();
+            for (JsonObject conversation : conversations.values()) {
+                conversationsArray.add(conversation);
+            }
+
+            JsonObject response = new JsonObject();
+            response.add("conversations", conversationsArray);
+            client.sendPacket(new Packet("CONVERSATION_LIST", response.toString()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void handleGroupMessage(String payload, ClientHandler senderClient) {
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
@@ -299,6 +349,31 @@ public class ChatService {
         msgObj.addProperty("isRecalled", msg.isRecalled());
         msgObj.add("reactions", messageReactionDAO.getReactionSummary(msg));
         return msgObj;
+    }
+
+    private JsonObject toConversationJson(String key, String type, String title, String preview, String timestamp) {
+        JsonObject obj = new JsonObject();
+        obj.addProperty("key", key);
+        obj.addProperty("type", type);
+        obj.addProperty("title", title);
+        obj.addProperty("preview", preview);
+        obj.addProperty("timestamp", timestamp);
+        return obj;
+    }
+
+    private String previewMessage(Message message) {
+        if (message.isRecalled()) {
+            return "[Tin nhắn đã bị thu hồi]";
+        }
+        String type = message.getMessageType();
+        if ("IMAGE".equals(type)) {
+            return "[Hình ảnh]";
+        }
+        if ("VOICE".equals(type)) {
+            return "[Voice]";
+        }
+        String content = message.getContent();
+        return content.length() > 80 ? content.substring(0, 80) + "..." : content;
     }
 
     private void notifyGroupListUpdated(GroupChat groupChat) {

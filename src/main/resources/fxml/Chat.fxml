@@ -1,56 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
-<BorderPane prefHeight="550.0" prefWidth="800.0" style="-fx-font-family: 'Segoe UI', Arial, sans-serif;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ChatController">
+<?import javafx.scene.shape.SVGPath?>
+<BorderPane prefHeight="550.0" prefWidth="800.0" styleClass="chat-root" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ChatController">
     <left>
-        <VBox prefWidth="250.0" spacing="10" style="-fx-border-color: #ccc; -fx-border-width: 0 1 0 0; -fx-background-color: #f9f9f9;">
-            <padding><Insets bottom="10" left="10" right="10" top="10" /></padding>
-
-            <Label style="-fx-font-weight: bold;" text="Tìm kiếm bạn bè" />
-            <TextField fx:id="txtSearchFriend" promptText="Tìm theo username..." />
-
-            <Label style="-fx-font-weight: bold; -fx-padding: 8 0 0 0;" text="Thêm bạn bè" />
-            <HBox spacing="5">
-                <TextField fx:id="txtAddFriend" promptText="Nhập username muốn kết bạn..." HBox.hgrow="ALWAYS" />
-                <Button onAction="#handleAddFriend" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-cursor: hand;" text="Thêm" />
-            </HBox>
-
-            <Label style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" text="Lời mời kết bạn" />
-            <ListView fx:id="listRequests" editable="true" prefHeight="53.0" prefWidth="229.0" style="-fx-background-color: white; -fx-border-color: #ccc;" />
-
-            <Label style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" text="Bạn bè" />
-            <ListView fx:id="listUsers" prefHeight="140.0" prefWidth="229.0" style="-fx-background-color: white; -fx-border-color: #ccc;" />
-
-            <Label style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" text="Nhóm chat" />
-            <ListView fx:id="listGroups" prefHeight="100.0" prefWidth="229.0" style="-fx-background-color: white; -fx-border-color: #ccc;" />
-
-            <Label style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" text="Tạo nhóm (&gt;= 3 người)" />
-            <TextField fx:id="txtGroupName" promptText="Tên nhóm..." />
-            <TextField fx:id="txtGroupMembers" promptText="user1,user2,..." />
-            <Button onAction="#handleCreateGroup" style="-fx-background-color: #673AB7; -fx-text-fill: white; -fx-cursor: hand;" text="Tạo nhóm" />
+        <VBox prefWidth="64.0" spacing="12.0" styleClass="side-nav">
+            <Button onAction="#handleShowSearchView" styleClass="nav-button" text="🔍" />
+            <Button onAction="#handleShowChatView" styleClass="nav-button" text="💬" />
+            <Button onAction="#handleShowContactsView" styleClass="nav-button" text="👥" />
+            <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button">
+                <graphic>
+                    <SVGPath scaleX="1.45" scaleY="1.45" styleClass="group-nav-icon" content="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zM11 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+                </graphic>
+            </Button>
         </VBox>
     </left>
     <center>
-        <VBox>
-            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #2196F3; -fx-padding: 10;">
-                <Label fx:id="lblChatTitle" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" text="Chọn cuộc trò chuyện để bắt đầu" />
-                <Region HBox.hgrow="ALWAYS" />
-                <Button fx:id="btnBlock" onAction="#handleBlockUser" style="-fx-background-color: #f44336; -fx-text-fill: white; -fx-cursor: hand;" text="Chặn" visible="false" />
-                <Button fx:id="btnMute" onAction="#handleMuteUser" style="-fx-background-color: #ff9800; -fx-text-fill: white; -fx-cursor: hand;" text="Tắt TB" visible="false" />
-            </HBox>
-
-            <ListView fx:id="listMessages" style="-fx-padding: 5; -fx-border-width: 0;" VBox.vgrow="ALWAYS" />
-
-            <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0; -fx-background-color: #f9f9f9;">
-                <Button onAction="#handleSendImage" style="-fx-font-size: 16px; -fx-background-color: #e0e0e0; -fx-cursor: hand;" text="📷" />
-                <Button fx:id="btnVoice" onAction="#handleSendVoice" style="-fx-font-size: 16px; -fx-background-color: #e0e0e0; -fx-cursor: hand;" text="🎤" />
-
-                <TextArea fx:id="txtMessage" prefRowCount="2" promptText="Nhập tin nhắn..." style="-fx-background-radius: 5; -fx-border-radius: 5;" HBox.hgrow="ALWAYS" />
-                <Button onAction="#handleSendMessage" prefHeight="40.0" prefWidth="80.0" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 5;" text="Gửi" />
-            </HBox>
-        </VBox>
+        <StackPane fx:id="contentStack" styleClass="content-stack">
+            <VBox fx:id="viewSearch" spacing="12.0" styleClass="utility-view">
+                <Label styleClass="view-title" text="Tìm kiếm và thêm bạn bè" />
+                <TextField fx:id="txtSearchFriend" promptText="Tìm theo username trong danh bạ..." styleClass="app-input" />
+                <HBox spacing="10.0">
+                    <TextField fx:id="txtAddFriend" promptText="Nhập username muốn kết bạn..." styleClass="app-input" HBox.hgrow="ALWAYS" />
+                    <Button onAction="#handleAddFriend" styleClass="primary-button" text="Thêm" />
+                </HBox>
+                <Label styleClass="muted-label" text="Kết quả tìm kiếm áp dụng trên danh sách ở mục Danh bạ." />
+            </VBox>
+            <VBox fx:id="viewChat" managed="false" spacing="0.0" visible="false">
+                <StackPane styleClass="chat-workspace" VBox.vgrow="ALWAYS">
+                    <VBox fx:id="viewRecentConversations" spacing="10.0" styleClass="conversation-overview">
+                        <Label styleClass="view-title" text="Tin nhắn" />
+                        <Label styleClass="muted-label" text="Hội thoại cá nhân và nhóm" />
+                        <ListView fx:id="listRecentConversations" styleClass="conversation-list" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                    <VBox fx:id="viewChatMessages" managed="false" spacing="0.0" visible="false">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="chat-header">
+                            <Label fx:id="lblChatTitle" styleClass="chat-title" text="Chọn hội thoại để xem lịch sử chat" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Button fx:id="btnBlock" onAction="#handleBlockUser" styleClass="danger-button" text="Chặn" visible="false" />
+                            <Button fx:id="btnMute" onAction="#handleMuteUser" styleClass="warning-button" text="Tắt TB" visible="false" />
+                        </HBox>
+                        <ListView fx:id="listMessages" styleClass="message-list" VBox.vgrow="ALWAYS" />
+                        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="composer">
+                            <Button onAction="#handleSendImage" styleClass="icon-button" text="📷" />
+                            <Button fx:id="btnVoice" onAction="#handleSendVoice" styleClass="icon-button" text="🎤" />
+                            <TextArea fx:id="txtMessage" prefRowCount="2" promptText="Nhập tin nhắn..." styleClass="message-input" HBox.hgrow="ALWAYS" />
+                            <Button onAction="#handleSendMessage" prefHeight="44.0" prefWidth="84.0" styleClass="send-button" text="Gửi" />
+                        </HBox>
+                    </VBox>
+                </StackPane>
+            </VBox>
+            <VBox fx:id="viewContacts" managed="false" spacing="10.0" styleClass="utility-view" visible="false">
+                <Label styleClass="view-title" text="Danh bạ" />
+                <Label styleClass="section-label" text="Danh sách bạn bè" />
+                <ListView fx:id="listUsers" styleClass="panel-list" VBox.vgrow="ALWAYS" />
+                <Label styleClass="section-label" text="Lời mời kết bạn" />
+                <ListView fx:id="listRequests" editable="true" prefHeight="130.0" styleClass="panel-list" />
+            </VBox>
+            <VBox fx:id="viewGroups" managed="false" spacing="10.0" styleClass="utility-view" visible="false">
+                <Label styleClass="view-title" text="Group chat" />
+                <Label styleClass="section-label" text="Danh sách nhóm" />
+                <ListView fx:id="listGroups" styleClass="panel-list" VBox.vgrow="ALWAYS" />
+                <Label styleClass="section-label" text="Tạo nhóm (&gt;= 3 người)" />
+                <TextField fx:id="txtGroupName" promptText="Tên nhóm..." styleClass="app-input" />
+                <TextField fx:id="txtGroupMembers" promptText="user1,user2,..." styleClass="app-input" />
+                <Button onAction="#handleCreateGroup" styleClass="group-button" text="Tạo nhóm" />
+            </VBox>
+        </StackPane>
     </center>
 </BorderPane>

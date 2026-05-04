@@ -45,7 +45,7 @@ public class LoginController {
                         chatController.initData(txtUsername.getText().trim());
 
                         Stage stage = (Stage) txtUsername.getScene().getWindow();
-                        stage.setScene(new Scene(chatRoot, 700, 500));
+                        stage.setScene(new Scene(chatRoot, 800, 550));
                         stage.centerOnScreen();
                     } catch (IOException e) {
                         e.printStackTrace();

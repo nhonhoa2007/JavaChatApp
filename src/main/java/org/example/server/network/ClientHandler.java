@@ -86,6 +86,10 @@ public class ClientHandler implements Runnable {
                 chatService.handleLoadGroups(this);
                 break;
 
+            case "CONVERSATION_LIST_REQUEST":
+                chatService.handleLoadConversations(this);
+                break;
+
             case "BROADCAST_MESSAGE":
                 chatService.handleBroadcastMessage(packet.getPayload(), this);
                 break;

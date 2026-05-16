@@ -8,7 +8,9 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GroupMemberDAO {
 
@@ -52,6 +54,28 @@ public class GroupMemberDAO {
             e.printStackTrace();
             return List.of();
         }
+    }
+
+    /**
+     * Batch query: lấy số lượng member cho nhiều nhóm cùng lúc.
+     * Thay vì N query getMembers().size(), chỉ cần 1 query GROUP BY.
+     * @return Map groupId → memberCount
+     */
+    public Map<Long, Integer> getMemberCountBatch(List<Long> groupIds) {
+        Map<Long, Integer> result = new HashMap<>();
+        if (groupIds == null || groupIds.isEmpty()) return result;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "SELECT gm.groupChat.id, COUNT(gm.id) FROM GroupMember gm " +
+                    "WHERE gm.groupChat.id IN :groupIds GROUP BY gm.groupChat.id";
+            Query<Object[]> query = session.createQuery(hql, Object[].class);
+            query.setParameter("groupIds", groupIds);
+            for (Object[] row : query.list()) {
+                result.put((Long) row[0], ((Long) row[1]).intValue());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }
 

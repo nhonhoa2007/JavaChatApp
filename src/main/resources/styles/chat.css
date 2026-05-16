@@ -27,6 +27,10 @@
     -fx-fill: white;
 }
 
+.composer-icon {
+    -fx-fill: #22314a;
+}
+
 .content-stack {
     -fx-background-color: #f6f8fb;
 }
@@ -132,7 +136,7 @@
 }
 
 .composer {
-    -fx-padding: 10 14 12 14;
+    -fx-padding: 10 20 12 14;
     -fx-background-color: white;
     -fx-border-color: #dbe2ea;
     -fx-border-width: 1 0 0 0;
@@ -153,7 +157,9 @@
 }
 
 .message-input {
-    -fx-min-height: 56px;
+    -fx-min-height: 52px;
+    -fx-pref-height: 52px;
+    -fx-max-height: 52px;
     -fx-background-color: #f8fafc;
     -fx-background-radius: 9px;
     -fx-border-color: #d9e1ec;
@@ -179,10 +185,19 @@
 
 .send-button {
     -fx-background-color: #16a34a;
+    -fx-min-width: 56px;
+    -fx-min-height: 52px;
+    -fx-pref-width: 56px;
+    -fx-pref-height: 52px;
+    -fx-padding: 0;
 }
 
 .send-button:hover {
     -fx-background-color: #15803d;
+}
+
+.send-icon {
+    -fx-fill: white;
 }
 
 .primary-button {
@@ -211,6 +226,18 @@
     -fx-font-weight: bold;
     -fx-cursor: hand;
     -fx-padding: 8 13 8 13;
+}
+
+.control-icon-button {
+    -fx-min-width: 40px;
+    -fx-min-height: 40px;
+    -fx-pref-width: 40px;
+    -fx-pref-height: 40px;
+    -fx-padding: 0;
+}
+
+.action-button-icon {
+    -fx-fill: white;
 }
 
 .danger-button {

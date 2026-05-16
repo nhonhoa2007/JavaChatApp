@@ -5,6 +5,7 @@ import org.example.common.network.Packet;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,10 +40,37 @@ public class ServerManager {
         activeClients.remove(clientHandler);
     }
 
+    /**
+     * Broadcast trạng thái online/offline của một user.
+     * Chỉ gửi cho những user có trong tập friendUsernames (bạn bè của user đó),
+     * thay vì gửi cho TẤT CẢ người đang online — tránh broadcast O(n²).
+     *
+     * @param username        user vừa login/logout
+     * @param isOnline        true = ONLINE, false = OFFLINE
+     * @param friendUsernames tập username bạn bè cần được thông báo
+     */
+    public void broadcastOnlineStatus(String username, boolean isOnline, Set<String> friendUsernames) {
+        String status = isOnline ? "ONLINE" : "OFFLINE";
+        Packet statusPacket = new Packet("STATUS_UPDATE", username + ":" + status);
+
+        for (ClientHandler client : activeClients) {
+            String clientName = client.getCurrentUsername();
+            if (clientName != null
+                    && !clientName.equals(username)
+                    && friendUsernames.contains(clientName)) {
+                client.sendPacket(statusPacket);
+            }
+        }
+    }
+
+    /**
+     * Overload không cần danh sách bạn bè — broadcast cho tất cả (legacy, dùng khi chưa có friend list).
+     * Giữ lại để AuthService có thể gọi mà không cần inject FriendshipDAO.
+     */
     public void broadcastOnlineStatus(String username, boolean isOnline) {
         String status = isOnline ? "ONLINE" : "OFFLINE";
         Packet statusPacket = new Packet("STATUS_UPDATE", username + ":" + status);
-        
+
         for (ClientHandler client : activeClients) {
             if (client.getCurrentUsername() != null && !client.getCurrentUsername().equals(username)) {
                 client.sendPacket(statusPacket);

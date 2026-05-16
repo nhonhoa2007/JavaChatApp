@@ -10,7 +10,9 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MessageReactionDAO {
 
@@ -73,6 +75,41 @@ public class MessageReactionDAO {
 				item.addProperty("emoji", String.valueOf(row[0]));
 				item.addProperty("count", ((Long) row[1]).intValue());
 				result.add(item);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
+	/**
+	 * Batch query reactions cho nhiều messages cùng lúc.
+	 * Thay vì N query (1 per message), chỉ cần 1 query duy nhất.
+	 * @return Map messageId → JsonArray reactions
+	 */
+	public Map<Long, JsonArray> getReactionSummaryBatch(List<Long> messageIds) {
+		Map<Long, JsonArray> result = new HashMap<>();
+		if (messageIds == null || messageIds.isEmpty()) {
+			return result;
+		}
+		try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+			String hql = "SELECT mr.message.id, mr.emoji, COUNT(mr.id) " +
+					"FROM MessageReaction mr WHERE mr.message.id IN :messageIds " +
+					"GROUP BY mr.message.id, mr.emoji " +
+					"ORDER BY mr.message.id, COUNT(mr.id) DESC";
+			Query<Object[]> query = session.createQuery(hql, Object[].class);
+			query.setParameter("messageIds", messageIds);
+
+			for (Object[] row : query.list()) {
+				Long msgId = (Long) row[0];
+				String emoji = String.valueOf(row[1]);
+				int count = ((Long) row[2]).intValue();
+
+				result.computeIfAbsent(msgId, k -> new JsonArray());
+				JsonObject item = new JsonObject();
+				item.addProperty("emoji", emoji);
+				item.addProperty("count", count);
+				result.get(msgId).add(item);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

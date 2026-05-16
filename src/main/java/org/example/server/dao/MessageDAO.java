@@ -8,6 +8,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
+import java.util.Collections;
 import java.util.List;
 
 public class MessageDAO {
@@ -55,15 +56,19 @@ public class MessageDAO {
 
     public List<Message> getPrivateHistory(User user1, User user2, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // ORDER BY DESC + setMaxResults để lấy N tin GẦN NHẤT
+            // Sau đó reverse để hiển thị đúng thứ tự thời gian (cũ → mới)
             String hql = "FROM Message m WHERE (m.sender = :u1 AND m.receiver = :u2) " +
-                         "OR (m.sender = :u2 AND m.receiver = :u1) ORDER BY m.sentAt ASC";
+                         "OR (m.sender = :u2 AND m.receiver = :u1) ORDER BY m.sentAt DESC";
             Query<Message> query = session.createQuery(hql, Message.class);
             query.setParameter("u1", user1);
             query.setParameter("u2", user2);
             if (limit > 0) {
                 query.setMaxResults(limit);
             }
-            return query.list();
+            List<Message> result = query.list();
+            Collections.reverse(result);  // đảo ngược → hiển thị cũ → mới
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -72,13 +77,16 @@ public class MessageDAO {
 
     public List<Message> getGroupHistory(GroupChat groupChat, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            String hql = "FROM Message m WHERE m.groupChat.id = :groupId ORDER BY m.sentAt ASC";
+            // ORDER BY DESC + setMaxResults để lấy N tin GẦN NHẤT, rồi reverse
+            String hql = "FROM Message m WHERE m.groupChat.id = :groupId ORDER BY m.sentAt DESC";
             Query<Message> query = session.createQuery(hql, Message.class);
             query.setParameter("groupId", groupChat.getId());
             if (limit > 0) {
                 query.setMaxResults(limit);
             }
-            return query.list();
+            List<Message> result = query.list();
+            Collections.reverse(result);
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             return null;

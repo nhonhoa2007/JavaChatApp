@@ -43,9 +43,18 @@
                         <ListView fx:id="listMessages" styleClass="message-list" VBox.vgrow="ALWAYS" />
                         <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="composer">
                             <Button onAction="#handleSendImage" styleClass="icon-button" text="📷" />
+                            <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleSendFile" styleClass="icon-button">
+                                <graphic>
+                                    <SVGPath scaleX="1.35" scaleY="1.35" styleClass="composer-icon" content="M16.5 6.5 7.8 15.2a3 3 0 1 0 4.24 4.24l8.49-8.49a5 5 0 0 0-7.07-7.07L4.97 12.37a7 7 0 1 0 9.9 9.9l8.49-8.49-1.41-1.41-8.49 8.49a5 5 0 1 1-7.07-7.07l8.49-8.49a3 3 0 1 1 4.24 4.24l-8.49 8.49a1 1 0 1 1-1.41-1.41l8.7-8.7-1.42-1.42z" />
+                                </graphic>
+                            </Button>
                             <Button fx:id="btnVoice" onAction="#handleSendVoice" styleClass="icon-button" text="🎤" />
-                            <TextArea fx:id="txtMessage" prefRowCount="2" promptText="Nhập tin nhắn..." styleClass="message-input" HBox.hgrow="ALWAYS" />
-                            <Button onAction="#handleSendMessage" prefHeight="44.0" prefWidth="84.0" styleClass="send-button" text="Gửi" />
+                            <TextArea fx:id="txtMessage" maxHeight="52.0" minHeight="52.0" prefHeight="52.0" prefRowCount="1" promptText="Nhập tin nhắn..." styleClass="message-input" HBox.hgrow="ALWAYS" />
+                            <Button contentDisplay="GRAPHIC_ONLY" minHeight="52.0" minWidth="56.0" onAction="#handleSendMessage" prefHeight="52.0" prefWidth="56.0" styleClass="send-button">
+                                <graphic>
+                                    <SVGPath scaleX="1.25" scaleY="1.25" styleClass="send-icon" content="M2 21 23 12 2 3v7l15 2-15 2v7z" />
+                                </graphic>
+                            </Button>
                         </HBox>
                     </VBox>
                 </StackPane>
@@ -62,8 +71,6 @@
                 <Label styleClass="section-label" text="Danh sách nhóm" />
                 <ListView fx:id="listGroups" styleClass="panel-list" VBox.vgrow="ALWAYS" />
                 <Label styleClass="section-label" text="Tạo nhóm (&gt;= 3 người)" />
-                <TextField fx:id="txtGroupName" promptText="Tên nhóm..." styleClass="app-input" />
-                <TextField fx:id="txtGroupMembers" promptText="user1,user2,..." styleClass="app-input" />
                 <Button onAction="#handleCreateGroup" styleClass="group-button" text="Tạo nhóm" />
             </VBox>
         </StackPane>

@@ -11,7 +11,9 @@ import org.example.server.dao.UserDAO;
 import org.example.server.network.ClientHandler;
 import org.example.server.network.ServerManager;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FriendService {
     private final ServerManager serverManager;
@@ -30,38 +32,35 @@ public class FriendService {
             List<Friendship> friends = friendshipDAO.getAcceptedFriends(user);
             List<Friendship> pendingRequests = friendshipDAO.getPendingRequests(user);
 
+            // Build Set username đang online 1 lần duy nhất — tránh O(n×m) loop
+            Set<String> onlineUsernames = new HashSet<>();
+            for (org.example.server.network.ClientHandler ch : serverManager.getActiveClients()) {
+                if (ch.getCurrentUsername() != null) {
+                    onlineUsernames.add(ch.getCurrentUsername());
+                }
+            }
+
             JsonObject responseJson = new JsonObject();
 
             JsonArray friendsArray = new JsonArray();
             if (friends != null) {
                 for (Friendship f : friends) {
                     User friendUser = f.getUser().getUsername().equals(user.getUsername()) ? f.getFriend() : f.getUser();
-                    
+
                     String blockedBy = f.getBlockedBy();
-                    
-                    // Bây giờ cho phép hiển thị bạn bè ngay cả khi họ chặn mình
-                    // (chỉ không cho nhắn tin, để UI vẫn giữ được danh sách bạn bè).
+
                     JsonObject friendObj = new JsonObject();
                     friendObj.addProperty("username", friendUser.getUsername());
-                    
-                    boolean isOnline = false;
-                    for(ClientHandler ch : serverManager.getActiveClients()) {
-                        if(friendUser.getUsername().equals(ch.getCurrentUsername())) {
-                            isOnline = true;
-                            break;
-                        }
-                    }
-                    
-                    friendObj.addProperty("status", isOnline ? "ONLINE" : "OFFLINE");
-                    
-                    // Cung cấp thêm cờ cho UI biết MÌNH CÓ ĐANG CHẶN HỌ KHÔNG (để UI đổi nút thành "Bỏ chặn")
+                    // O(1) lookup thay vì loop O(m)
+                    friendObj.addProperty("status", onlineUsernames.contains(friendUser.getUsername()) ? "ONLINE" : "OFFLINE");
+
                     boolean amIBlocking = blockedBy != null && blockedBy.contains(user.getUsername());
                     friendObj.addProperty("isBlockedByMe", amIBlocking);
-                    
+
                     String mutedBy = f.getMutedBy();
                     boolean amIMuting = mutedBy != null && mutedBy.contains(user.getUsername());
                     friendObj.addProperty("isMutedByMe", amIMuting);
-                    
+
                     friendsArray.add(friendObj);
                 }
             }

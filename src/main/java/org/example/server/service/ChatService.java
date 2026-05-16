@@ -3,6 +3,7 @@ package org.example.server.service;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.example.common.model.Friendship;
 import org.example.common.model.GroupChat;
 import org.example.common.model.GroupMember;
 import org.example.common.model.Message;
@@ -17,6 +18,8 @@ import org.example.server.dao.UserDAO;
 import org.example.server.network.ClientHandler;
 import org.example.server.network.ServerManager;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -48,11 +51,19 @@ public class ChatService {
             if (currentUser == null || otherUser == null) return;
 
             List<Message> history = messageDAO.getPrivateHistory(currentUser, otherUser, limit);
-            
+
+            // Batch load reactions cho tất cả messages cùng 1 query thay vì N queries
+            Map<Long, JsonArray> reactionBatch = Map.of();
+            if (history != null && !history.isEmpty()) {
+                List<Long> ids = history.stream().map(Message::getId).toList();
+                reactionBatch = messageReactionDAO.getReactionSummaryBatch(ids);
+            }
+
             JsonArray messagesArray = new JsonArray();
             if (history != null) {
                 for (Message msg : history) {
-                    messagesArray.add(toMessageJson(msg, currentUser));
+                    JsonArray reactions = reactionBatch.getOrDefault(msg.getId(), new JsonArray());
+                    messagesArray.add(toMessageJson(msg, currentUser, reactions));
                 }
             }
 
@@ -80,10 +91,19 @@ public class ChatService {
             }
 
             List<Message> history = messageDAO.getGroupHistory(groupChat, limit);
+
+            // Batch load reactions — 1 query thay vì N queries
+            Map<Long, JsonArray> reactionBatch = Map.of();
+            if (history != null && !history.isEmpty()) {
+                List<Long> ids = history.stream().map(Message::getId).toList();
+                reactionBatch = messageReactionDAO.getReactionSummaryBatch(ids);
+            }
+
             JsonArray messagesArray = new JsonArray();
             if (history != null) {
                 for (Message msg : history) {
-                    messagesArray.add(toMessageJson(msg, currentUser));
+                    JsonArray reactions = reactionBatch.getOrDefault(msg.getId(), new JsonArray());
+                    messagesArray.add(toMessageJson(msg, currentUser, reactions));
                 }
             }
 
@@ -167,12 +187,23 @@ public class ChatService {
             }
 
             List<GroupChat> groups = groupDAO.getGroupsOfUser(user);
+            if (groups.isEmpty()) {
+                JsonObject response = new JsonObject();
+                response.add("groups", new JsonArray());
+                client.sendPacket(new Packet("GROUP_LIST", response.toString()));
+                return;
+            }
+
+            // Batch count thay vì N query getMembers().size() trong loop
+            List<Long> groupIds = groups.stream().map(GroupChat::getId).toList();
+            Map<Long, Integer> memberCounts = groupMemberDAO.getMemberCountBatch(groupIds);
+
             JsonArray groupsArray = new JsonArray();
             for (GroupChat g : groups) {
                 JsonObject groupObj = new JsonObject();
                 groupObj.addProperty("groupId", g.getId());
                 groupObj.addProperty("groupName", g.getName());
-                groupObj.addProperty("memberCount", groupMemberDAO.getMembers(g).size());
+                groupObj.addProperty("memberCount", memberCounts.getOrDefault(g.getId(), 0));
                 groupsArray.add(groupObj);
             }
 
@@ -191,6 +222,16 @@ public class ChatService {
                 return;
             }
 
+            // Pre-load member counts cho tất cả groups liên quan — tránh N+1
+            List<GroupChat> userGroups = groupDAO.getGroupsOfUser(currentUser);
+            Map<Long, Integer> memberCounts = Map.of();
+            if (userGroups != null && !userGroups.isEmpty()) {
+                List<Long> groupIds = userGroups.stream().map(GroupChat::getId).toList();
+                memberCounts = groupMemberDAO.getMemberCountBatch(groupIds);
+            }
+            // Dùng effectively-final copy để dùng trong lambda/closure nếu cần
+            final Map<Long, Integer> memberCountsRef = memberCounts;
+
             Map<String, JsonObject> conversations = new LinkedHashMap<>();
             for (Message message : messageDAO.getConversationMessages(currentUser)) {
                 if (message.getReceiver() != null) {
@@ -208,7 +249,9 @@ public class ChatService {
                 } else if (message.getGroupChat() != null) {
                     GroupChat groupChat = message.getGroupChat();
                     String key = "GROUP:" + groupChat.getId();
-                    String title = groupChat.getName() + " (" + groupMemberDAO.getMembers(groupChat).size() + ")";
+                    // Dùng batch count thay vì query riêng per group
+                    int count = memberCountsRef.getOrDefault(groupChat.getId(), 0);
+                    String title = groupChat.getName() + " (" + count + ")";
                     conversations.putIfAbsent(key, toConversationJson(
                             key,
                             "GROUP",
@@ -216,6 +259,26 @@ public class ChatService {
                             message.getSender().getUsername() + ": " + previewMessage(message),
                             message.getSentAt().toString()
                     ));
+                }
+            }
+
+            List<Friendship> friends = friendshipDAO.getAcceptedFriends(currentUser);
+            if (friends != null) {
+                for (Friendship friendship : friends) {
+                    User friend = friendship.getUser().getId().equals(currentUser.getId())
+                            ? friendship.getFriend()
+                            : friendship.getUser();
+                    String key = "PRIVATE:" + friend.getUsername();
+                    conversations.putIfAbsent(key, toConversationJson(key, "PRIVATE", friend.getUsername(), "", ""));
+                }
+            }
+
+            if (userGroups != null) {
+                for (GroupChat group : userGroups) {
+                    String key = "GROUP:" + group.getId();
+                    int count = memberCountsRef.getOrDefault(group.getId(), 0);
+                    String title = group.getName() + " (" + count + ")";
+                    conversations.putIfAbsent(key, toConversationJson(key, "GROUP", title, "", ""));
                 }
             }
 
@@ -237,6 +300,7 @@ public class ChatService {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
             long groupId = json.get("groupId").getAsLong();
             String content = json.get("content").getAsString();
+            String filename = json.has("filename") ? json.get("filename").getAsString() : null;
             String messageType = json.has("type") ? json.get("type").getAsString() : "TEXT";
 
             User sender = userDAO.findByUsername(senderClient.getCurrentUsername());
@@ -248,6 +312,7 @@ public class ChatService {
             }
 
             Message message = new Message(sender, groupChat, messageType, content);
+            message.setFileName(filename);
             messageDAO.saveMessage(message);
 
             JsonObject ackJson = toMessageJson(message, sender);
@@ -274,6 +339,7 @@ public class ChatService {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
             String receiverUsername = json.get("receiver").getAsString();
             String content = json.get("content").getAsString();
+            String filename = json.has("filename") ? json.get("filename").getAsString() : null;
             String messageType = json.has("type") ? json.get("type").getAsString() : "TEXT";
 
             User sender = userDAO.findByUsername(senderClient.getCurrentUsername());
@@ -289,6 +355,7 @@ public class ChatService {
 
             // Lưu tin nhắn vào DB
             Message message = new Message(sender, receiver, messageType, content);
+            message.setFileName(filename);
             messageDAO.saveMessage(message);
 
             // Kiểm tra Mute (Tắt thông báo)
@@ -330,6 +397,11 @@ public class ChatService {
     }
 
     private JsonObject toMessageJson(Message msg, User currentUser) {
+        // Fallback: query reactions cho 1 message (dùng khi gửi single message ACK/incoming)
+        return toMessageJson(msg, currentUser, messageReactionDAO.getReactionSummary(msg));
+    }
+
+    private JsonObject toMessageJson(Message msg, User currentUser, JsonArray reactions) {
         JsonObject msgObj = new JsonObject();
         msgObj.addProperty("id", msg.getId());
         msgObj.addProperty("sender", msg.getSender().getUsername().equals(currentUser.getUsername()) ? "Bạn" : msg.getSender().getUsername());
@@ -345,9 +417,12 @@ public class ChatService {
         }
 
         msgObj.addProperty("type", msg.getMessageType());
+        if (msg.getFileName() != null && !msg.getFileName().isBlank()) {
+            msgObj.addProperty("filename", msg.getFileName());
+        }
         msgObj.addProperty("timestamp", msg.getSentAt().toString());
         msgObj.addProperty("isRecalled", msg.isRecalled());
-        msgObj.add("reactions", messageReactionDAO.getReactionSummary(msg));
+        msgObj.add("reactions", reactions);
         return msgObj;
     }
 
@@ -366,6 +441,9 @@ public class ChatService {
             return "[Tin nhắn đã bị thu hồi]";
         }
         String type = message.getMessageType();
+        if ("FILE".equals(type)) {
+            return "[File]";
+        }
         if ("IMAGE".equals(type)) {
             return "[Hình ảnh]";
         }

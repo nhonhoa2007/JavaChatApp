@@ -27,13 +27,16 @@ public class Message {
     @JoinColumn(name = "group_id")
     private GroupChat groupChat;
 
-    // Could be TEXT, IMAGE, VOICE, VIDEO_LOG
+    // Could be TEXT, IMAGE, VOICE, FILE
     @Column(name = "message_type", length = 20, nullable = false)
     private String messageType;
 
     // Can store the text content OR a file path/base64 for images/voice
     @Column(name = "content", columnDefinition = "NVARCHAR(MAX)", nullable = false)
     private String content;
+
+    @Column(name = "file_name", length = 255)
+    private String fileName;
 
     @Column(name = "is_read")
     private boolean isRead;
@@ -127,6 +130,14 @@ public class Message {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 
     public boolean isRead() {

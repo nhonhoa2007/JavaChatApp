@@ -3,12 +3,14 @@ package org.example.server.service;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.example.common.model.CallLog;
 import org.example.common.model.Friendship;
 import org.example.common.model.GroupChat;
 import org.example.common.model.GroupMember;
 import org.example.common.model.Message;
 import org.example.common.model.User;
 import org.example.common.network.Packet;
+import org.example.server.dao.CallLogDAO;
 import org.example.server.dao.FriendshipDAO;
 import org.example.server.dao.GroupDAO;
 import org.example.server.dao.GroupMemberDAO;
@@ -34,6 +36,7 @@ public class ChatService {
     private final GroupDAO groupDAO = new GroupDAO();
     private final GroupMemberDAO groupMemberDAO = new GroupMemberDAO();
     private final MessageReactionDAO messageReactionDAO = new MessageReactionDAO();
+    private final CallLogDAO callLogDAO = new CallLogDAO();
 
     public ChatService(ServerManager serverManager) {
         this.serverManager = serverManager;
@@ -52,18 +55,39 @@ public class ChatService {
 
             List<Message> history = messageDAO.getPrivateHistory(currentUser, otherUser, limit);
 
-            // Batch load reactions cho tất cả messages cùng 1 query thay vì N queries
+            // Batch load reactions
             Map<Long, JsonArray> reactionBatch = Map.of();
             if (history != null && !history.isEmpty()) {
                 List<Long> ids = history.stream().map(Message::getId).toList();
                 reactionBatch = messageReactionDAO.getReactionSummaryBatch(ids);
             }
 
+            // Load call logs giữa 2 user
+            List<CallLog> callLogs = callLogDAO.getCallHistoryBetween(currentUser, otherUser, limit);
+
+            // Merge messages + call logs theo thời gian
             JsonArray messagesArray = new JsonArray();
-            if (history != null) {
-                for (Message msg : history) {
+            int mi = 0, ci = 0;
+            List<Message> msgs = history != null ? history : List.of();
+
+            while (mi < msgs.size() || ci < callLogs.size()) {
+                boolean pickMessage;
+                if (mi >= msgs.size()) {
+                    pickMessage = false;
+                } else if (ci >= callLogs.size()) {
+                    pickMessage = true;
+                } else {
+                    // So sánh thời gian: message sentAt vs callLog startedAt
+                    pickMessage = msgs.get(mi).getSentAt().compareTo(callLogs.get(ci).getStartedAt()) <= 0;
+                }
+
+                if (pickMessage) {
+                    Message msg = msgs.get(mi++);
                     JsonArray reactions = reactionBatch.getOrDefault(msg.getId(), new JsonArray());
                     messagesArray.add(toMessageJson(msg, currentUser, reactions));
+                } else {
+                    CallLog log = callLogs.get(ci++);
+                    messagesArray.add(toCallLogJson(log, currentUser));
                 }
             }
 
@@ -433,6 +457,48 @@ public class ChatService {
         obj.addProperty("title", title);
         obj.addProperty("preview", preview);
         obj.addProperty("timestamp", timestamp);
+        return obj;
+    }
+
+    private JsonObject toCallLogJson(CallLog log, User currentUser) {
+        JsonObject obj = new JsonObject();
+        obj.addProperty("id", log.getId());
+        obj.addProperty("type", "CALL_LOG");
+
+        boolean isCaller = log.getCaller().getId().equals(currentUser.getId());
+        obj.addProperty("sender", isCaller ? "Bạn" : log.getCaller().getUsername());
+        obj.addProperty("callType", log.getCallType());
+        obj.addProperty("status", log.getStatus());
+        obj.addProperty("timestamp", log.getStartedAt().toString());
+
+        // Tạo content text dựa trên status
+        String icon;
+        String text;
+        switch (log.getStatus()) {
+            case "COMPLETED" -> {
+                icon = "📞";
+                int dur = log.getDurationSec() != null ? log.getDurationSec() : 0;
+                text = "Cuộc gọi thoại — " + String.format("%d:%02d", dur / 60, dur % 60);
+            }
+            case "MISSED" -> {
+                icon = "📵";
+                text = isCaller ? "Cuộc gọi nhỡ (không nhấc máy)" : "Cuộc gọi nhỡ";
+            }
+            case "REJECTED" -> {
+                icon = "❌";
+                text = isCaller ? "Đã bị từ chối" : "Bạn đã từ chối";
+            }
+            case "CANCELED" -> {
+                icon = "↩️";
+                text = isCaller ? "Bạn đã hủy cuộc gọi" : "Cuộc gọi bị hủy";
+            }
+            default -> {
+                icon = "📞";
+                text = "Cuộc gọi";
+            }
+        }
+        obj.addProperty("content", icon + " " + text);
+
         return obj;
     }
 

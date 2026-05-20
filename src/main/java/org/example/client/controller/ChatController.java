@@ -1301,15 +1301,19 @@ public class ChatController {
         for (int i = 0; i < messages.size(); i++) {
             JsonObject msg = messages.get(i).getAsJsonObject();
             long id = msg.get("id").getAsLong();
-            String sender = msg.get("sender").getAsString();
+            String sender = msg.has("sender") ? msg.get("sender").getAsString() : "";
             String content = msg.get("content").getAsString();
             String type = msg.get("type").getAsString();
             String filename = msg.has("filename") ? msg.get("filename").getAsString() : null;
 
-            boolean isMe = sender.equals("Bạn");
+            boolean isMe = "Bạn".equals(sender);
             listMessages.getItems().add(createMessageNodeByType(id, sender, content, isMe, type, msg.has("reactions") ? msg.getAsJsonArray("reactions") : null, filename));
-            messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
-            messageConversationMap.put(id, privateConversationKey(otherUser));
+
+            // CALL_LOG entries không cần track trong messageIdToIndexMap
+            if (!"CALL_LOG".equals(type)) {
+                messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
+                messageConversationMap.put(id, privateConversationKey(otherUser));
+            }
         }
     }
 
@@ -1387,7 +1391,24 @@ public class ChatController {
         if ("FILE".equals(type)) {
             return createFileMessageNode(messageId, sender, content, filename, isMe, reactions);
         }
+        if ("CALL_LOG".equals(type)) {
+            return createCallLogNode(content);
+        }
         return createTextMessageNode(messageId, sender, content, isMe, reactions);
+    }
+
+    // Render call log entry (cuộc gọi đã kết thúc) — hiển thị ở giữa
+    private HBox createCallLogNode(String content) {
+        HBox container = new HBox();
+        container.setAlignment(Pos.CENTER);
+
+        Label label = new Label(content);
+        label.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-padding: 6 14; "
+                + "-fx-background-color: #f1f5f9; -fx-background-radius: 12;");
+
+        container.getChildren().add(label);
+        container.setUserData(new MessageData(null, "CALL_LOG", content, false, ""));
+        return container;
     }
 
     // Helper method to create a modern text message UI node

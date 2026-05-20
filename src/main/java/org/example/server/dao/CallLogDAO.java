@@ -38,4 +38,22 @@ public class CallLogDAO {
             return List.of();
         }
     }
+
+    // Lấy call logs giữa 2 user cụ thể, sắp theo thời gian cũ → mới
+    public List<CallLog> getCallHistoryBetween(User user1, User user2, int limit) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM CallLog c WHERE " +
+                    "(c.caller.id = :u1 AND c.callee.id = :u2) OR " +
+                    "(c.caller.id = :u2 AND c.callee.id = :u1) " +
+                    "ORDER BY c.startedAt ASC";
+            Query<CallLog> query = session.createQuery(hql, CallLog.class);
+            query.setParameter("u1", user1.getId());
+            query.setParameter("u2", user2.getId());
+            if (limit > 0) query.setMaxResults(limit);
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
 }

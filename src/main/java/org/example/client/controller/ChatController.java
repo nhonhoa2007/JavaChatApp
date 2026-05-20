@@ -14,6 +14,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -1469,6 +1470,12 @@ public class ChatController {
             ImageView imageView = new ImageView(image);
             imageView.setFitWidth(220);
             imageView.setPreserveRatio(true);
+            imageView.setCursor(javafx.scene.Cursor.HAND);
+            
+            // Click to view full size and save
+            imageView.setOnMouseClicked(e -> {
+                showImagePreviewDialog(image, imageBytes);
+            });
             
             // Add a small border radius effect using CSS wrapper
             VBox imageWrapper = new VBox(imageView);
@@ -1496,6 +1503,56 @@ public class ChatController {
         container.setUserData(new MessageData(messageId, "IMAGE", base64Content, isMe, sender));
         container.getChildren().add(messageBox);
         return container;
+    }
+
+    private void showImagePreviewDialog(Image image, byte[] imageBytes) {
+        javafx.stage.Stage previewStage = new javafx.stage.Stage();
+        previewStage.setTitle("Xem ảnh");
+        previewStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+
+        ImageView fullImageView = new ImageView(image);
+        fullImageView.setPreserveRatio(true);
+        fullImageView.setFitWidth(Math.min(image.getWidth(), 800));
+        fullImageView.setFitHeight(Math.min(image.getHeight(), 600));
+
+        Button saveButton = new Button("💾 Tải xuống");
+        saveButton.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 8px; -fx-padding: 8 16;");
+        saveButton.setOnAction(e -> {
+            FileChooser saver = new FileChooser();
+            saver.setTitle("Lưu hình ảnh");
+            saver.setInitialFileName("image.png");
+            saver.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("PNG", "*.png"),
+                new FileChooser.ExtensionFilter("JPG", "*.jpg"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+            );
+            File dest = saver.showSaveDialog(previewStage);
+            if (dest != null) {
+                try {
+                    Files.write(dest.toPath(), imageBytes);
+                    showAlert("Hoàn tất", "Ảnh đã được lưu: " + dest.getAbsolutePath(), Alert.AlertType.INFORMATION);
+                } catch (IOException ex) {
+                    showAlert("Lỗi", "Không thể lưu ảnh.", Alert.AlertType.ERROR);
+                }
+            }
+        });
+
+        HBox buttonBar = new HBox(saveButton);
+        buttonBar.setAlignment(Pos.CENTER);
+        buttonBar.setPadding(new javafx.geometry.Insets(10));
+
+        javafx.scene.control.ScrollPane scrollPane = new javafx.scene.control.ScrollPane(fullImageView);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setStyle("-fx-background-color: #1e1e1e;");
+
+        VBox root = new VBox(scrollPane, buttonBar);
+        root.setStyle("-fx-background-color: #1e1e1e;");
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(root, 820, 660);
+        previewStage.setScene(scene);
+        previewStage.show();
     }
 
     private HBox createVoiceMessageNode(Long messageId, String sender, String base64Content, boolean isMe, JsonArray reactions) {

@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.client.call.CallManager;
 import org.example.client.network.ChatClient;
 
 public class ClientApplication extends Application {
@@ -25,6 +26,7 @@ public class ClientApplication extends Application {
             System.err.println("Không thể kết nối tới Server. Đang thoát...");
             System.exit(1);
         }
+        CallManager.init(chatClient);
 
         // Tải giao diện Login (JavaFX FXML)
         Parent root = FXMLLoader.load(getClass().getResource("/fxml/Login.fxml"));

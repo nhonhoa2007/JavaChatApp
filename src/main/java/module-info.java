@@ -11,6 +11,7 @@ module org.example {
     requires org.controlsfx.controls;
     
     opens org.example.client.controller to javafx.fxml;
+    opens org.example.client.call to javafx.fxml;
     opens org.example.common.model to org.hibernate.orm.core;
     opens org.example.common.network to com.google.gson;
     exports org.example.client.network;

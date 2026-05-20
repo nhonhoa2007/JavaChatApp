@@ -16,6 +16,7 @@
         <hibernate.version>6.4.4.Final</hibernate.version>
     </properties>
 
+
     <dependencies>
         <!-- JavaFX -->
         <dependency>
@@ -28,6 +29,7 @@
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+
 
 
         <!-- ControlsFX for Push Notifications/Popups in JavaFX -->

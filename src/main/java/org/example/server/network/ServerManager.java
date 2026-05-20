@@ -1,6 +1,7 @@
 package org.example.server.network;
 
 import org.example.common.network.Packet;
+import org.example.server.service.CallService;
 
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -14,8 +15,27 @@ public class ServerManager {
     private static final int PORT = 8888;
     private final ExecutorService threadPool = Executors.newFixedThreadPool(100);
     private final List<ClientHandler> activeClients = new CopyOnWriteArrayList<>();
+    private final CallService callService = new CallService(this);
+    private UdpRelayService udpRelayService;
+
+    public CallService getCallService() {
+        return callService;
+    }
+
+    public UdpRelayService getUdpRelayService() {
+        return udpRelayService;
+    }
 
     public void startServer() {
+        // Start UDP relay trước TCP server
+        try {
+            udpRelayService = new UdpRelayService();
+            udpRelayService.start();
+        } catch (Exception e) {
+            System.err.println("Failed to start UDP relay: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Chat Server is running on port " + PORT + "...");
             

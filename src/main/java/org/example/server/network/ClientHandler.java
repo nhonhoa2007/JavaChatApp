@@ -2,6 +2,7 @@ package org.example.server.network;
 
 import org.example.common.network.Packet;
 import org.example.server.service.AuthService;
+import org.example.server.service.CallService;
 import org.example.server.service.ChatService;
 import org.example.server.service.FriendService;
 import org.example.server.service.MessageService;
@@ -21,6 +22,7 @@ public class ClientHandler implements Runnable {
     private final ChatService chatService;
     private final MessageService messageService;
     private final FriendService friendService;
+    private final CallService callService;
 
     public ClientHandler(Socket socket, ServerManager serverManager) {
         this.socket = socket;
@@ -28,6 +30,7 @@ public class ClientHandler implements Runnable {
         this.chatService = new ChatService(serverManager);
         this.messageService = new MessageService(serverManager);
         this.friendService = new FriendService(serverManager);
+        this.callService = serverManager.getCallService();
     }
 
     @Override
@@ -130,6 +133,29 @@ public class ClientHandler implements Runnable {
                 friendService.handleMuteUser(packet.getPayload(), this);
                 break;
 
+            case "CALL_INVITE":
+                callService.handleInvite(packet.getPayload(), this);
+                break;
+            case "CALL_ACCEPT":
+                callService.handleAccept(packet.getPayload(), this);
+                break;
+            case "CALL_ACCEPT_ACK":
+                callService.handleAcceptAck(packet.getPayload(), this);
+                break;
+            case "CALL_REJECT":
+                callService.handleReject(packet.getPayload(), this);
+                break;
+            case "CALL_CANCEL":
+                callService.handleCancel(packet.getPayload(), this);
+                break;
+            case "CALL_END":
+                callService.handleEnd(packet.getPayload(), this);
+                break;
+            case "CALL_BUSY":
+                // Client gửi BUSY khi nhận invite mà đang bận — server chỉ forward
+                callService.handleReject(packet.getPayload(), this);
+                break;
+
             case "LOGOUT_REQUEST":
                 disconnect();
                 break;
@@ -146,6 +172,10 @@ public class ClientHandler implements Runnable {
     }
 
     private void disconnect() {
+        // Cleanup cuộc gọi đang diễn ra TRƯỚC khi logout
+        if (currentUsername != null) {
+            callService.handleClientDisconnect(currentUsername);
+        }
         authService.handleLogout(this);
         try {
             if (socket != null && !socket.isClosed()) {

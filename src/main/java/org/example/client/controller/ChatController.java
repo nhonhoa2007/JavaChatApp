@@ -25,8 +25,12 @@ import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 import org.controlsfx.control.Notifications;
 import org.example.client.ClientApplication;
+import org.example.client.call.CallEventListener;
+import org.example.client.call.CallManager;
+import org.example.client.call.CallSession;
 import org.example.client.util.VoicePlayer;
 import org.example.client.util.VoiceRecorder;
+import org.example.common.network.CallPacketTypes;
 import org.example.common.network.Packet;
 
 import java.io.ByteArrayInputStream;
@@ -70,6 +74,9 @@ public class ChatController {
 
     @FXML
     private Label lblChatTitle;
+
+    @FXML
+    private Button btnCall;
 
     @FXML
     private Button btnBlock;
@@ -279,6 +286,44 @@ public class ChatController {
     public void initialize() {
         ClientApplication.getChatClient().setOnPacketReceived(this::handleServerResponse);
 
+        CallManager.init(ClientApplication.getChatClient());
+        ClientApplication.getChatClient().addListener(CallManager.getInstance()::handlePacket);
+
+        // Voice call event listener — mở UI thật thay vì Alert
+        CallManager.getInstance().addListener(new CallEventListener() {
+            @Override
+            public void onIncomingCall(CallSession session) {
+                Platform.runLater(() -> openIncomingCallWindow(session));
+            }
+
+            @Override
+            public void onOutgoingCallStarted(CallSession session) {
+                Platform.runLater(() -> openCallViewWindow(session));
+            }
+
+            @Override
+            public void onCallActive(CallSession session) {
+                Platform.runLater(() -> {
+                    // Đóng popup incoming call nếu đang hiện (callee vừa accept)
+                    closeIncomingCallWindow();
+                    // Nếu chưa có CallView (callee side), mở nó
+                    if (callViewStage == null || !callViewStage.isShowing()) {
+                        openCallViewWindow(session);
+                    }
+                    // Caller side: CallView đã mở từ onOutgoingCallStarted, nó tự update qua listener riêng
+                });
+            }
+
+            @Override
+            public void onCallEnded(CallSession session, String reason) {
+                Platform.runLater(() -> {
+                    closeIncomingCallWindow();
+                    closeCallViewWindow();
+                    showPushNotification("Cuộc gọi", reason);
+                });
+            }
+        });
+
         // Default tab after login is Chat.
         switchView(viewChat);
 
@@ -363,6 +408,7 @@ public class ChatController {
                         currentConversationKey = groupConversationKey(groupId);
                         lblChatTitle.setText("Nhóm: " + newValue);
                         loadGroupHistory(groupId);
+                        if (btnCall != null) btnCall.setVisible(false);
                         if (btnBlock != null) btnBlock.setVisible(false);
                         if (btnMute != null) btnMute.setVisible(false);
                         switchToChatMessages();
@@ -464,6 +510,7 @@ public class ChatController {
 
         currentConversationKey = groupConversationKey(groupId);
         clearChatPaneForConversation("Nhóm: " + groupTitle);
+        if (btnCall != null) btnCall.setVisible(false);
         if (btnBlock != null) btnBlock.setVisible(false);
         if (btnMute != null) btnMute.setVisible(false);
         switchToChatMessages();
@@ -496,6 +543,7 @@ public class ChatController {
 
     private void updateControlButtons(String targetUser) {
         if (btnBlock == null || btnMute == null) return;
+        if (btnCall != null) btnCall.setVisible(true);
         btnBlock.setVisible(true);
         btnMute.setVisible(true);
 
@@ -1197,6 +1245,20 @@ public class ChatController {
             ClientApplication.getChatClient().sendPacket(new Packet("ACCEPT_FRIEND_REQUEST", payload.toString()));
             listRequests.getItems().remove(selectedRequest);
         }
+    }
+
+    @FXML
+    public void handleCallUser(ActionEvent event) {
+        String peer = getActivePrivateTarget();
+        if (peer == null) {
+            showAlert("Thông báo", "Vui lòng chọn bạn bè để gọi.", Alert.AlertType.WARNING);
+            return;
+        }
+        if (CallManager.getInstance().isInCall()) {
+            showAlert("Thông báo", "Bạn đang trong cuộc gọi khác.", Alert.AlertType.WARNING);
+            return;
+        }
+        CallManager.getInstance().startCall(peer, CallPacketTypes.TYPE_VOICE);
     }
 
     @FXML
@@ -1925,5 +1987,79 @@ public class ChatController {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    // ── Voice Call UI helpers ──────────────────────────────
+
+    private javafx.stage.Stage incomingCallStage;
+    private IncomingCallController incomingCallController;
+    private javafx.stage.Stage callViewStage;
+    private CallViewController callViewController;
+
+    private void openIncomingCallWindow(CallSession session) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/IncomingCall.fxml"));
+            javafx.scene.Parent root = loader.load();
+            incomingCallController = loader.getController();
+            incomingCallController.initData(session);
+
+            incomingCallStage = new javafx.stage.Stage();
+            incomingCallStage.setTitle("Cuộc gọi đến");
+            incomingCallStage.initStyle(javafx.stage.StageStyle.UTILITY);
+            incomingCallStage.setAlwaysOnTop(true);
+            incomingCallStage.setResizable(false);
+            incomingCallStage.setScene(new javafx.scene.Scene(root));
+            incomingCallStage.setOnCloseRequest(e -> {
+                // User đóng cửa sổ = reject
+                org.example.client.call.RingtonePlayer.getInstance().stop();
+                CallManager.getInstance().rejectCall(CallPacketTypes.REASON_USER_REJECT);
+            });
+            incomingCallStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void openCallViewWindow(CallSession session) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/CallView.fxml"));
+            javafx.scene.Parent root = loader.load();
+            callViewController = loader.getController();
+            callViewController.initData(session);
+
+            callViewStage = new javafx.stage.Stage();
+            callViewStage.setTitle("Cuộc gọi - " + session.peerUsername);
+            callViewStage.initStyle(javafx.stage.StageStyle.UTILITY);
+            callViewStage.setResizable(false);
+            callViewStage.setScene(new javafx.scene.Scene(root));
+            callViewStage.setOnCloseRequest(e -> {
+                CallManager.getInstance().endCall();
+            });
+            callViewStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void closeIncomingCallWindow() {
+        if (incomingCallController != null) {
+            incomingCallController.forceClose();
+            incomingCallController = null;
+        }
+        if (incomingCallStage != null) {
+            if (incomingCallStage.isShowing()) incomingCallStage.close();
+            incomingCallStage = null;
+        }
+    }
+
+    private void closeCallViewWindow() {
+        if (callViewController != null) {
+            callViewController.forceClose();
+            callViewController = null;
+        }
+        if (callViewStage != null) {
+            if (callViewStage.isShowing()) callViewStage.close();
+            callViewStage = null;
+        }
     }
 }

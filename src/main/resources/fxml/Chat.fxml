@@ -37,6 +37,7 @@
                         <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="chat-header">
                             <Label fx:id="lblChatTitle" styleClass="chat-title" text="Chọn hội thoại để xem lịch sử chat" />
                             <Region HBox.hgrow="ALWAYS" />
+                            <Button fx:id="btnCall" onAction="#handleCallUser" styleClass="nav-button" text="📞" visible="false" />
                             <Button fx:id="btnBlock" onAction="#handleBlockUser" styleClass="danger-button" text="Chặn" visible="false" />
                             <Button fx:id="btnMute" onAction="#handleMuteUser" styleClass="warning-button" text="Tắt TB" visible="false" />
                         </HBox>

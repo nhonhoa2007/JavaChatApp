@@ -280,6 +280,7 @@
     -fx-background-color: #dbeafe;
     -fx-text-fill: #1e3a8a;
 }
+<<<<<<< HEAD
 
 /* Admin Dashboard Styles */
 .admin-table {
@@ -356,3 +357,5 @@
     -fx-min-height: 38px;
 }
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e

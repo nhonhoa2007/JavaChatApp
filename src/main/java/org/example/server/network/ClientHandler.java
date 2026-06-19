@@ -6,7 +6,10 @@ import org.example.server.service.CallService;
 import org.example.server.service.ChatService;
 import org.example.server.service.FriendService;
 import org.example.server.service.MessageService;
+<<<<<<< HEAD
 import org.example.server.service.AdminService;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -24,7 +27,10 @@ public class ClientHandler implements Runnable {
     private final MessageService messageService;
     private final FriendService friendService;
     private final CallService callService;
+<<<<<<< HEAD
     private final AdminService adminService;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
     public ClientHandler(Socket socket, ServerManager serverManager) {
         this.socket = socket;
@@ -33,7 +39,10 @@ public class ClientHandler implements Runnable {
         this.messageService = new MessageService(serverManager);
         this.friendService = new FriendService(serverManager);
         this.callService = serverManager.getCallService();
+<<<<<<< HEAD
         this.adminService = new AdminService(serverManager);
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     }
 
     @Override
@@ -68,10 +77,13 @@ public class ClientHandler implements Runnable {
                 // khi ChatController đã initialize xong và sẵn sàng nhận response.
                 break;
 
+<<<<<<< HEAD
             case "GET_USER_INFO":
                 authService.handleGetUserInfo(this);
                 break;
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
             case "LOAD_HISTORY_REQUEST":
                 chatService.handleLoadHistory(packet.getPayload(), this);
                 break;
@@ -132,10 +144,13 @@ public class ClientHandler implements Runnable {
                 friendService.handleLoadFriends(this);
                 break;
 
+<<<<<<< HEAD
             case "SEARCH_ALL_USERS_REQUEST":
                 friendService.handleSearchAllUsers(this);
                 break;
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
             case "BLOCK_USER_REQUEST":
                 friendService.handleBlockUser(packet.getPayload(), this);
                 break;
@@ -167,6 +182,7 @@ public class ClientHandler implements Runnable {
                 callService.handleReject(packet.getPayload(), this);
                 break;
 
+<<<<<<< HEAD
             case "ADMIN_GET_USERS":
                 adminService.handleGetUsers(this);
                 break;
@@ -183,6 +199,8 @@ public class ClientHandler implements Runnable {
                 adminService.handleToggleLock(packet.getPayload(), this);
                 break;
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
             case "LOGOUT_REQUEST":
                 disconnect();
                 break;

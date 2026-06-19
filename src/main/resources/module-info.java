@@ -8,7 +8,11 @@ module org.example {
     requires jbcrypt;
     
     // Mở các gói (packages) cho phép JavaFX Reflection truy cập
+<<<<<<< HEAD
     opens org.example.client.controller to javafx.fxml, javafx.base;
+=======
+    opens org.example.client.controller to javafx.fxml;
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     opens org.example.common.model to org.hibernate.orm.core;
 
     // Xuất khẩu class khởi chạy JavaFX

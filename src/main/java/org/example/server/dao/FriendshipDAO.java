@@ -166,6 +166,7 @@ public class FriendshipDAO {
             return false;
         }
     }
+<<<<<<< HEAD
 
     public List<Friendship> getAllFriendships(User user) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
@@ -178,4 +179,6 @@ public class FriendshipDAO {
             return java.util.Collections.emptyList();
         }
     }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 }

@@ -15,7 +15,10 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+<<<<<<< HEAD
 import javafx.scene.layout.Region;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -39,8 +42,11 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+<<<<<<< HEAD
 import java.text.Normalizer;
 import java.util.regex.Pattern;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
@@ -50,6 +56,7 @@ import java.util.Map;
 import java.util.Optional;
 import javax.sound.sampled.LineUnavailableException;
 
+<<<<<<< HEAD
 import javafx.scene.control.cell.PropertyValueFactory;
 
 public class ChatController {
@@ -70,13 +77,20 @@ public class ChatController {
         public String getStatus() { return status; }
     }
 
+=======
+public class ChatController {
+
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     @FXML
     private ListView<String> listUsers;
 
     @FXML
+<<<<<<< HEAD
     private ListView<SearchUserResult> listSearchResults;
 
     @FXML
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private ListView<String> listRequests;
 
     @FXML
@@ -92,6 +106,12 @@ public class ChatController {
     private TextArea txtMessage;
 
     @FXML
+<<<<<<< HEAD
+=======
+    private TextField txtAddFriend;
+
+    @FXML
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private TextField txtSearchFriend;
 
     @FXML
@@ -130,6 +150,7 @@ public class ChatController {
     @FXML
     private VBox viewGroups;
 
+<<<<<<< HEAD
     @FXML
     private VBox viewAdmin;
 
@@ -199,6 +220,11 @@ public class ChatController {
     private final Map<Long, Integer> messageIdToIndexMap = new HashMap<>();
     private final ObservableList<String> allFriendItems = FXCollections.observableArrayList();
     private final ObservableList<SearchUserResult> allSystemUsers = FXCollections.observableArrayList();
+=======
+    private String currentUsername;
+    private final Map<Long, Integer> messageIdToIndexMap = new HashMap<>();
+    private final ObservableList<String> allFriendItems = FXCollections.observableArrayList();
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private final Map<String, Long> groupDisplayToId = new HashMap<>();
     private final Map<Long, String> messageConversationMap = new HashMap<>();
     private final Map<Long, Label> reactionLabelMap = new HashMap<>();
@@ -221,6 +247,7 @@ public class ChatController {
 
     private record MessageData(Long messageId, String type, String content, boolean isMe, String senderDisplay) {}
 
+<<<<<<< HEAD
     public static class AdminUserRow {
         private final Long id;
         private final String username;
@@ -249,6 +276,8 @@ public class ChatController {
         public String getLastSeen() { return lastSeen; }
     }
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private record ConversationItem(String key, String title, String type, String preview, String timestamp) {
         @Override
         public String toString() {
@@ -274,6 +303,7 @@ public class ChatController {
         return username + ("ONLINE".equals(status) ? " [Online]" : " [Offline]");
     }
 
+<<<<<<< HEAD
     private static String removeAccents(String src) {
         if (src == null) return "";
         String nfdNormalizedString = Normalizer.normalize(src, Normalizer.Form.NFD);
@@ -342,6 +372,8 @@ public class ChatController {
         return 0.0;
     }
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private String privateConversationKey(String username) {
         return "PRIVATE:" + username;
     }
@@ -379,10 +411,13 @@ public class ChatController {
             viewGroups.setVisible(viewGroups == activeView);
             viewGroups.setManaged(viewGroups == activeView);
         }
+<<<<<<< HEAD
         if (viewAdmin != null) {
             viewAdmin.setVisible(viewAdmin == activeView);
             viewAdmin.setManaged(viewAdmin == activeView);
         }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
         if (viewChat == activeView) {
             if (viewRecentConversations != null) {
@@ -421,7 +456,10 @@ public class ChatController {
     @FXML
     public void handleShowSearchView(ActionEvent event) {
         switchView(viewSearch);
+<<<<<<< HEAD
         requestSearchAllUsers();
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     }
 
     @FXML
@@ -443,12 +481,20 @@ public class ChatController {
 
     private void applyFriendFilter() {
         String selectedUsername = extractUsername(listUsers.getSelectionModel().getSelectedItem());
+<<<<<<< HEAD
         String keyword = txtSearchFriend == null ? "" : txtSearchFriend.getText().trim();
 
         // 1. Update the original listUsers (Contacts tab) with simple substring filter
         listUsers.getItems().setAll(
                 allFriendItems.stream()
                         .filter(item -> keyword.isEmpty() || extractUsername(item).toLowerCase().contains(keyword.toLowerCase()))
+=======
+        String keyword = txtSearchFriend == null ? "" : txtSearchFriend.getText().trim().toLowerCase();
+
+        listUsers.getItems().setAll(
+                allFriendItems.stream()
+                        .filter(item -> keyword.isEmpty() || extractUsername(item).toLowerCase().contains(keyword))
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                         .toList()
         );
 
@@ -460,6 +506,7 @@ public class ChatController {
                 }
             }
         }
+<<<<<<< HEAD
 
         // 2. Update listSearchResults (Search tab) using the fuzzy/typo-tolerant scoring algorithm
         if (listSearchResults != null) {
@@ -490,6 +537,8 @@ public class ChatController {
                 listSearchResults.getItems().setAll(sortedResults);
             }
         }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     }
 
     private void updateFriendStatusInMaster(String username, String status) {
@@ -616,6 +665,7 @@ public class ChatController {
             }
         });
 
+<<<<<<< HEAD
         if (listSearchResults != null) {
             listSearchResults.setCellFactory(lv -> new ListCell<>() {
                 private final HBox hbox = new HBox(10);
@@ -736,6 +786,8 @@ public class ChatController {
             });
         }
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
         if (listGroups != null) {
             listGroups.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
                 if (suppressConversationSelection) {
@@ -761,6 +813,7 @@ public class ChatController {
         setupMessageContextMenu();
         setupRequestContextMenu();
 
+<<<<<<< HEAD
         ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
         ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
         ClientApplication.getChatClient().sendPacket(new Packet("GET_USER_INFO", ""));
@@ -798,6 +851,14 @@ public class ChatController {
                 handleAdminSearch(null);
             });
         }
+=======
+        // Chủ động request danh sách bạn bè ngay khi ChatController đã sẵn sàng nhận response.
+        // Trước đây server gửi LOAD_FRIENDS_SUCCESS ngay sau LOGIN_SUCCESS nhưng lúc đó
+        // LoginController vẫn đang là handler → packet bị bỏ qua.
+        ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
+        ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
+        requestConversationList();
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     }
 
     private void handleRecentConversationSelected(ConversationItem item) {
@@ -1062,9 +1123,12 @@ public class ChatController {
                 case "LOAD_FRIENDS_SUCCESS":
                     handleLoadFriendsSuccess(packet.getPayload());
                     break;
+<<<<<<< HEAD
                 case "SEARCH_ALL_USERS_SUCCESS":
                     handleSearchAllUsersSuccess(packet.getPayload());
                     break;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                 case "GROUP_LIST":
                     handleGroupList(packet.getPayload());
                     break;
@@ -1087,14 +1151,21 @@ public class ChatController {
                     break;
                 case "FRIEND_SUCCESS":
                     showAlert("Thông báo", packet.getPayload(), Alert.AlertType.INFORMATION);
+<<<<<<< HEAD
                     requestSearchAllUsers();
+=======
+                    txtAddFriend.clear();
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                     break;
                 case "FRIEND_ERROR":
                     showAlert("Lỗi Kết Bạn", packet.getPayload(), Alert.AlertType.ERROR);
                     break;
                 case "RELOAD_FRIENDS":
                     ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
+<<<<<<< HEAD
                     requestSearchAllUsers();
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                     break;
                 case "BLOCK_SUCCESS":
                 case "MUTE_SUCCESS":
@@ -1127,6 +1198,7 @@ public class ChatController {
                 case "REACTION_UPDATED":
                     handleReactionUpdated(packet.getPayload());
                     break;
+<<<<<<< HEAD
                 case "USER_INFO":
                     handleUserInfo(packet.getPayload());
                     break;
@@ -1142,6 +1214,8 @@ public class ChatController {
                 case "FORCE_LOGOUT":
                     handleForceLogout(packet.getPayload());
                     break;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                 case "CHAT_ERROR":
                     showAlert("Lỗi Gửi Tin", packet.getPayload(), Alert.AlertType.ERROR);
                     break;
@@ -1216,6 +1290,7 @@ public class ChatController {
         }
     }
 
+<<<<<<< HEAD
     private void handleSearchAllUsersSuccess(String payload) {
         JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
         JsonArray users = json.getAsJsonArray("users");
@@ -1249,6 +1324,8 @@ public class ChatController {
         ClientApplication.getChatClient().sendPacket(new Packet("ACCEPT_FRIEND_REQUEST", payload.toString()));
     }
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private void handleNewFriendRequest(String payload) {
         JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
         String from = json.get("from").getAsString();
@@ -1290,6 +1367,7 @@ public class ChatController {
                         break;
                     }
                 }
+<<<<<<< HEAD
                 if (listSearchResults != null) {
                     for (int i = 0; i < listSearchResults.getItems().size(); i++) {
                         SearchUserResult visibleItem = listSearchResults.getItems().get(i);
@@ -1299,6 +1377,8 @@ public class ChatController {
                         }
                     }
                 }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                 // Restore selection nếu đang chọn user này
                 if (user.equals(selectedUser)) {
                     for (String item : listUsers.getItems()) {
@@ -1568,6 +1648,19 @@ public class ChatController {
     }
 
     @FXML
+<<<<<<< HEAD
+=======
+    public void handleAddFriend(ActionEvent event) {
+        String friendUsername = txtAddFriend.getText().trim();
+        if (friendUsername.isEmpty()) return;
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("friendUsername", friendUsername);
+        ClientApplication.getChatClient().sendPacket(new Packet("ADD_FRIEND_REQUEST", payload.toString()));
+    }
+
+    @FXML
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     public void handleCreateGroup(ActionEvent event) {
         List<String> friendUsernames = allFriendItems.stream()
                 .map(this::extractUsername)
@@ -2561,6 +2654,7 @@ public class ChatController {
             callViewStage = null;
         }
     }
+<<<<<<< HEAD
 
     private void handleUserInfo(String payload) {
         try {
@@ -2800,4 +2894,6 @@ public class ChatController {
             txtAdminNewPassword.clear();
         }
     }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 }

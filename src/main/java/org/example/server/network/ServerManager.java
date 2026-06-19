@@ -1,9 +1,12 @@
 package org.example.server.network;
 
 import org.example.common.network.Packet;
+<<<<<<< HEAD
 import org.example.common.model.User;
 import org.example.server.dao.UserDAO;
 import org.example.server.util.PasswordUtil;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 import org.example.server.service.CallService;
 
 import java.net.ServerSocket;
@@ -39,6 +42,7 @@ public class ServerManager {
             e.printStackTrace();
         }
 
+<<<<<<< HEAD
         // Ensure Users.full_name is NVARCHAR to support Vietnamese characters
         try {
             try (org.hibernate.Session session = org.example.server.util.HibernateUtil.getSessionFactory().openSession()) {
@@ -73,6 +77,8 @@ public class ServerManager {
             e.printStackTrace();
         }
 
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Chat Server is running on port " + PORT + "...");
             

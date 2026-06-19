@@ -5,24 +5,43 @@
 <BorderPane prefHeight="550.0" prefWidth="800.0" styleClass="chat-root" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ChatController">
     <left>
         <VBox prefWidth="64.0" spacing="12.0" styleClass="side-nav">
+<<<<<<< HEAD
             <Button fx:id="btnNavSearch" onAction="#handleShowSearchView" styleClass="nav-button" text="🔍" />
             <Button fx:id="btnNavChat" onAction="#handleShowChatView" styleClass="nav-button" text="💬" />
             <Button fx:id="btnNavContacts" onAction="#handleShowContactsView" styleClass="nav-button" text="👥" />
             <Button fx:id="btnNavGroups" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button">
+=======
+            <Button onAction="#handleShowSearchView" styleClass="nav-button" text="🔍" />
+            <Button onAction="#handleShowChatView" styleClass="nav-button" text="💬" />
+            <Button onAction="#handleShowContactsView" styleClass="nav-button" text="👥" />
+            <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button">
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                 <graphic>
                     <SVGPath scaleX="1.45" scaleY="1.45" styleClass="group-nav-icon" content="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zM11 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
                 </graphic>
             </Button>
+<<<<<<< HEAD
             <Button fx:id="btnAdmin" onAction="#handleShowAdminView" styleClass="nav-button" text="🛠" visible="false" managed="false" />
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
         </VBox>
     </left>
     <center>
         <StackPane fx:id="contentStack" styleClass="content-stack">
             <VBox fx:id="viewSearch" spacing="12.0" styleClass="utility-view">
                 <Label styleClass="view-title" text="Tìm kiếm và thêm bạn bè" />
+<<<<<<< HEAD
                 <TextField fx:id="txtSearchFriend" promptText="Tìm kiếm bạn bè..." styleClass="app-input" />
                 <Label styleClass="section-label" text="Kết quả tìm kiếm bạn bè:" />
                 <ListView fx:id="listSearchResults" styleClass="panel-list" VBox.vgrow="ALWAYS" />
+=======
+                <TextField fx:id="txtSearchFriend" promptText="Tìm theo username trong danh bạ..." styleClass="app-input" />
+                <HBox spacing="10.0">
+                    <TextField fx:id="txtAddFriend" promptText="Nhập username muốn kết bạn..." styleClass="app-input" HBox.hgrow="ALWAYS" />
+                    <Button onAction="#handleAddFriend" styleClass="primary-button" text="Thêm" />
+                </HBox>
+                <Label styleClass="muted-label" text="Kết quả tìm kiếm áp dụng trên danh sách ở mục Danh bạ." />
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
             </VBox>
             <VBox fx:id="viewChat" managed="false" spacing="0.0" visible="false">
                 <StackPane styleClass="chat-workspace" VBox.vgrow="ALWAYS">
@@ -72,6 +91,7 @@
                 <Label styleClass="section-label" text="Tạo nhóm (&gt;= 3 người)" />
                 <Button onAction="#handleCreateGroup" styleClass="group-button" text="Tạo nhóm" />
             </VBox>
+<<<<<<< HEAD
             <VBox fx:id="viewAdmin" managed="false" spacing="10.0" styleClass="utility-view" visible="false">
                 <Label styleClass="view-title" text="Quản lý tài khoản (Admin)" />
                 <Label styleClass="muted-label" text="Xem thông tin, chỉnh sửa, khóa hoặc tạo tài khoản mới" />
@@ -123,6 +143,8 @@
                     </VBox>
                 </HBox>
             </VBox>
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
         </StackPane>
     </center>
 </BorderPane>

@@ -14,8 +14,11 @@ import org.example.server.network.ServerManager;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+<<<<<<< HEAD
 import java.util.Map;
 import java.util.HashMap;
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
 public class FriendService {
     private final ServerManager serverManager;
@@ -233,6 +236,7 @@ public class FriendService {
             e.printStackTrace();
         }
     }
+<<<<<<< HEAD
 
     public void handleSearchAllUsers(ClientHandler client) {
         try {
@@ -294,4 +298,6 @@ public class FriendService {
             e.printStackTrace();
         }
     }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 }

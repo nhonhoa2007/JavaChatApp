@@ -53,6 +53,7 @@ public class UserDAO {
             e.printStackTrace();
         }
     }
+<<<<<<< HEAD
 
     public boolean updateUser(User user) {
         Transaction transaction = null;
@@ -80,4 +81,6 @@ public class UserDAO {
             return java.util.Collections.emptyList();
         }
     }
+=======
+>>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 }

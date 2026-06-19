@@ -50,6 +50,8 @@ import java.util.Map;
 import java.util.Optional;
 import javax.sound.sampled.LineUnavailableException;
 
+import javafx.scene.control.cell.PropertyValueFactory;
+
 public class ChatController {
 
     public static class SearchUserResult {
@@ -128,6 +130,71 @@ public class ChatController {
     @FXML
     private VBox viewGroups;
 
+    @FXML
+    private VBox viewAdmin;
+
+    @FXML
+    private Button btnAdmin;
+
+    @FXML
+    private Button btnNavSearch;
+
+    @FXML
+    private Button btnNavChat;
+
+    @FXML
+    private Button btnNavContacts;
+
+    @FXML
+    private Button btnNavGroups;
+
+    @FXML
+    private TableView<AdminUserRow> tblUsers;
+
+    @FXML
+    private TableColumn<AdminUserRow, String> colUsername;
+
+    @FXML
+    private TableColumn<AdminUserRow, String> colFullName;
+
+    @FXML
+    private TableColumn<AdminUserRow, String> colRole;
+
+    @FXML
+    private TableColumn<AdminUserRow, String> colStatus;
+
+    @FXML
+    private TableColumn<AdminUserRow, Boolean> colLocked;
+
+    @FXML
+    private TextField txtAdminSearch;
+
+    @FXML
+    private TextField txtAdminUsername;
+
+    @FXML
+    private TextField txtAdminFullName;
+
+    @FXML
+    private ComboBox<String> cmbAdminRole;
+
+    @FXML
+    private PasswordField txtAdminNewPassword;
+
+    @FXML
+    private Button btnAdminSave;
+
+    @FXML
+    private Button btnAdminToggleLock;
+
+    @FXML
+    private Button btnAdminResetPw;
+
+    private final ObservableList<AdminUserRow> allAdminUsers = FXCollections.observableArrayList();
+    private final ObservableList<AdminUserRow> filteredAdminUsers = FXCollections.observableArrayList();
+    private String currentUserRole = "USER";
+    private boolean isAdminCreateMode = false;
+
     private String currentUsername;
     private final Map<Long, Integer> messageIdToIndexMap = new HashMap<>();
     private final ObservableList<String> allFriendItems = FXCollections.observableArrayList();
@@ -153,6 +220,34 @@ public class ChatController {
     private static final String BELL_OFF_ICON = "M20.59 21.99 2.01 3.41 3.42 2l18.58 18.58-1.41 1.41zM18 16v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5-.77 0-1.39 .58-1.48 1.32L18 11.29V16zm-2.18 3H4v-1l2-2v-5c0-1.17 .24-2.27 .68-3.24L15.82 17H20v1l-2 2h-2.18zM12 22c1.1 0 2-.9 2-2h-4c0 1.1 .9 2 2 2z";
 
     private record MessageData(Long messageId, String type, String content, boolean isMe, String senderDisplay) {}
+
+    public static class AdminUserRow {
+        private final Long id;
+        private final String username;
+        private final String fullName;
+        private final String role;
+        private final String status;
+        private final boolean locked;
+        private final String lastSeen;
+
+        public AdminUserRow(Long id, String username, String fullName, String role, String status, boolean locked, String lastSeen) {
+            this.id = id;
+            this.username = username;
+            this.fullName = fullName;
+            this.role = role;
+            this.status = status;
+            this.locked = locked;
+            this.lastSeen = lastSeen;
+        }
+
+        public Long getId() { return id; }
+        public String getUsername() { return username; }
+        public String getFullName() { return fullName; }
+        public String getRole() { return role; }
+        public String getStatus() { return status; }
+        public boolean isLocked() { return locked; }
+        public String getLastSeen() { return lastSeen; }
+    }
 
     private record ConversationItem(String key, String title, String type, String preview, String timestamp) {
         @Override
@@ -283,6 +378,10 @@ public class ChatController {
         if (viewGroups != null) {
             viewGroups.setVisible(viewGroups == activeView);
             viewGroups.setManaged(viewGroups == activeView);
+        }
+        if (viewAdmin != null) {
+            viewAdmin.setVisible(viewAdmin == activeView);
+            viewAdmin.setManaged(viewAdmin == activeView);
         }
 
         if (viewChat == activeView) {
@@ -662,12 +761,43 @@ public class ChatController {
         setupMessageContextMenu();
         setupRequestContextMenu();
 
-        // Chủ động request danh sách bạn bè ngay khi ChatController đã sẵn sàng nhận response.
-        // Trước đây server gửi LOAD_FRIENDS_SUCCESS ngay sau LOGIN_SUCCESS nhưng lúc đó
-        // LoginController vẫn đang là handler → packet bị bỏ qua.
         ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
         ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
+        ClientApplication.getChatClient().sendPacket(new Packet("GET_USER_INFO", ""));
         requestConversationList();
+
+        // Initialize Admin Dashboard TableView & ComboBox
+        if (tblUsers != null) {
+            colUsername.setCellValueFactory(new PropertyValueFactory<>("username"));
+            colFullName.setCellValueFactory(new PropertyValueFactory<>("fullName"));
+            colRole.setCellValueFactory(new PropertyValueFactory<>("role"));
+            colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+            colLocked.setCellValueFactory(new PropertyValueFactory<>("locked"));
+
+            tblUsers.setItems(allAdminUsers);
+
+            tblUsers.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+                if (newSelection != null) {
+                    if (isAdminCreateMode) {
+                        toggleAdminCreateMode(false);
+                    }
+                    txtAdminUsername.setText(newSelection.getUsername());
+                    txtAdminFullName.setText(newSelection.getFullName());
+                    cmbAdminRole.setValue(newSelection.getRole());
+                    btnAdminToggleLock.setText(newSelection.isLocked() ? "Mở khóa" : "Khóa");
+                    txtAdminNewPassword.clear();
+                }
+            });
+        }
+        if (cmbAdminRole != null) {
+            cmbAdminRole.getItems().addAll("USER", "ADMIN");
+            cmbAdminRole.setValue("USER");
+        }
+        if (txtAdminSearch != null) {
+            txtAdminSearch.textProperty().addListener((obs, oldValue, newValue) -> {
+                handleAdminSearch(null);
+            });
+        }
     }
 
     private void handleRecentConversationSelected(ConversationItem item) {
@@ -996,6 +1126,21 @@ public class ChatController {
                     break;
                 case "REACTION_UPDATED":
                     handleReactionUpdated(packet.getPayload());
+                    break;
+                case "USER_INFO":
+                    handleUserInfo(packet.getPayload());
+                    break;
+                case "ADMIN_USER_LIST":
+                    handleAdminUserList(packet.getPayload());
+                    break;
+                case "ADMIN_SUCCESS":
+                    showAlert("Thành công", packet.getPayload(), Alert.AlertType.INFORMATION);
+                    break;
+                case "ADMIN_ERROR":
+                    showAlert("Lỗi hệ thống", packet.getPayload(), Alert.AlertType.ERROR);
+                    break;
+                case "FORCE_LOGOUT":
+                    handleForceLogout(packet.getPayload());
                     break;
                 case "CHAT_ERROR":
                     showAlert("Lỗi Gửi Tin", packet.getPayload(), Alert.AlertType.ERROR);
@@ -2414,6 +2559,245 @@ public class ChatController {
         if (callViewStage != null) {
             if (callViewStage.isShowing()) callViewStage.close();
             callViewStage = null;
+        }
+    }
+
+    private void handleUserInfo(String payload) {
+        try {
+            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+            String role = json.get("role").getAsString();
+            this.currentUserRole = role;
+            Platform.runLater(() -> {
+                boolean isAdmin = "ADMIN".equals(role);
+                if (btnAdmin != null) {
+                    btnAdmin.setVisible(isAdmin);
+                    btnAdmin.setManaged(isAdmin);
+                }
+                if (btnNavSearch != null) {
+                    btnNavSearch.setVisible(!isAdmin);
+                    btnNavSearch.setManaged(!isAdmin);
+                }
+                if (btnNavChat != null) {
+                    btnNavChat.setVisible(!isAdmin);
+                    btnNavChat.setManaged(!isAdmin);
+                }
+                if (btnNavContacts != null) {
+                    btnNavContacts.setVisible(!isAdmin);
+                    btnNavContacts.setManaged(!isAdmin);
+                }
+                if (btnNavGroups != null) {
+                    btnNavGroups.setVisible(!isAdmin);
+                    btnNavGroups.setManaged(!isAdmin);
+                }
+
+                if (isAdmin) {
+                    handleShowAdminView(null);
+                } else {
+                    switchView(viewChat);
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleAdminUserList(String payload) {
+        Platform.runLater(() -> {
+            try {
+                JsonArray jsonArray = JsonParser.parseString(payload).getAsJsonArray();
+                allAdminUsers.clear();
+                for (int i = 0; i < jsonArray.size(); i++) {
+                    JsonObject jsonUser = jsonArray.get(i).getAsJsonObject();
+                    Long id = jsonUser.get("id").getAsLong();
+                    String username = jsonUser.get("username").getAsString();
+                    String fullName = jsonUser.get("fullName").getAsString();
+                    String role = jsonUser.get("role").getAsString();
+                    String status = jsonUser.get("status").getAsString();
+                    boolean locked = jsonUser.get("locked").getAsBoolean();
+                    String lastSeen = jsonUser.get("lastSeen").getAsString();
+
+                    allAdminUsers.add(new AdminUserRow(id, username, fullName, role, status, locked, lastSeen));
+                }
+                handleAdminSearch(null);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void handleForceLogout(String message) {
+        Platform.runLater(() -> {
+            showAlert("Thông báo", message, Alert.AlertType.WARNING);
+            try {
+                ClientApplication.getChatClient().disconnect();
+                ClientApplication.getChatClient().connect(
+                    ClientApplication.getChatClient().getServerHost() != null ? ClientApplication.getChatClient().getServerHost() : "localhost", 
+                    8888
+                );
+                javafx.stage.Stage stage = (javafx.stage.Stage) contentStack.getScene().getWindow();
+                javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
+                javafx.scene.Parent loginRoot = loader.load();
+                stage.setScene(new javafx.scene.Scene(loginRoot, 400, 400));
+                stage.centerOnScreen();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    @FXML
+    public void handleShowAdminView(ActionEvent event) {
+        switchView(viewAdmin);
+        ClientApplication.getChatClient().sendPacket(new Packet("ADMIN_GET_USERS", ""));
+    }
+
+    @FXML
+    public void handleAdminSearch(ActionEvent event) {
+        if (txtAdminSearch == null) return;
+        String keyword = txtAdminSearch.getText().trim().toLowerCase();
+        if (keyword.isEmpty()) {
+            tblUsers.setItems(allAdminUsers);
+        } else {
+            String cleanKeyword = removeAccents(keyword).replace("?", "");
+            filteredAdminUsers.setAll(
+                allAdminUsers.stream()
+                    .filter(u -> {
+                        String cleanUsername = removeAccents(u.getUsername().toLowerCase()).replace("?", "");
+                        String cleanFullName = removeAccents(u.getFullName().toLowerCase()).replace("?", "");
+                        return cleanUsername.contains(cleanKeyword) || cleanFullName.contains(cleanKeyword);
+                    })
+                    .toList()
+            );
+            tblUsers.setItems(filteredAdminUsers);
+        }
+    }
+
+    @FXML
+    public void handleAdminOpenCreateForm(ActionEvent event) {
+        toggleAdminCreateMode(true);
+    }
+
+    private void toggleAdminCreateMode(boolean enable) {
+        isAdminCreateMode = enable;
+        if (enable) {
+            tblUsers.getSelectionModel().clearSelection();
+            txtAdminUsername.setText("");
+            txtAdminUsername.setEditable(true);
+            txtAdminUsername.getStyleClass().remove("app-input-disabled");
+            txtAdminFullName.setText("");
+            cmbAdminRole.setValue("USER");
+            txtAdminNewPassword.clear();
+            
+            btnAdminSave.setText("Tạo mới");
+            btnAdminSave.setPrefWidth(120.0);
+            btnAdminToggleLock.setVisible(false);
+            btnAdminToggleLock.setManaged(false);
+            btnAdminResetPw.setText("Hủy");
+            btnAdminResetPw.setPrefWidth(120.0);
+        } else {
+            txtAdminUsername.setEditable(false);
+            if (!txtAdminUsername.getStyleClass().contains("app-input-disabled")) {
+                txtAdminUsername.getStyleClass().add("app-input-disabled");
+            }
+            btnAdminSave.setText("Lưu");
+            btnAdminSave.setPrefWidth(70.0);
+            btnAdminToggleLock.setVisible(true);
+            btnAdminToggleLock.setManaged(true);
+            btnAdminResetPw.setText("Đặt lại MK");
+            btnAdminResetPw.setPrefWidth(100.0);
+            
+            AdminUserRow selected = tblUsers.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                txtAdminUsername.setText(selected.getUsername());
+                txtAdminFullName.setText(selected.getFullName());
+                cmbAdminRole.setValue(selected.getRole());
+                btnAdminToggleLock.setText(selected.isLocked() ? "Mở khóa" : "Khóa");
+            }
+        }
+    }
+
+    @FXML
+    public void handleAdminSaveUser(ActionEvent event) {
+        if (isAdminCreateMode) {
+            String username = txtAdminUsername.getText().trim();
+            String fullName = txtAdminFullName.getText().trim();
+            String role = cmbAdminRole.getValue();
+            String password = txtAdminNewPassword.getText().trim();
+
+            if (username.isEmpty() || fullName.isEmpty() || password.isEmpty()) {
+                showAlert("Lỗi", "Vui lòng điền đầy đủ thông tin: Tài khoản, Họ tên, Mật khẩu!", Alert.AlertType.ERROR);
+                return;
+            }
+
+            JsonObject payload = new JsonObject();
+            payload.addProperty("username", username);
+            payload.addProperty("fullName", fullName);
+            payload.addProperty("role", role);
+            payload.addProperty("password", password);
+
+            ClientApplication.getChatClient().sendPacket(new Packet("ADMIN_CREATE_USER", payload.toString()));
+            toggleAdminCreateMode(false);
+        } else {
+            AdminUserRow selected = tblUsers.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Lỗi", "Vui lòng chọn một tài khoản từ danh sách!", Alert.AlertType.WARNING);
+                return;
+            }
+
+            String fullName = txtAdminFullName.getText().trim();
+            String role = cmbAdminRole.getValue();
+
+            if (fullName.isEmpty()) {
+                showAlert("Lỗi", "Họ và tên không được để trống!", Alert.AlertType.ERROR);
+                return;
+            }
+
+            JsonObject payload = new JsonObject();
+            payload.addProperty("id", selected.getId());
+            payload.addProperty("fullName", fullName);
+            payload.addProperty("role", role);
+
+            ClientApplication.getChatClient().sendPacket(new Packet("ADMIN_UPDATE_USER", payload.toString()));
+        }
+    }
+
+    @FXML
+    public void handleAdminToggleLock(ActionEvent event) {
+        AdminUserRow selected = tblUsers.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("Lỗi", "Vui lòng chọn một tài khoản từ danh sách!", Alert.AlertType.WARNING);
+            return;
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("id", selected.getId());
+
+        ClientApplication.getChatClient().sendPacket(new Packet("ADMIN_TOGGLE_LOCK", payload.toString()));
+    }
+
+    @FXML
+    public void handleAdminResetPassword(ActionEvent event) {
+        if (isAdminCreateMode) {
+            toggleAdminCreateMode(false);
+        } else {
+            AdminUserRow selected = tblUsers.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Lỗi", "Vui lòng chọn một tài khoản từ danh sách!", Alert.AlertType.WARNING);
+                return;
+            }
+
+            String newPassword = txtAdminNewPassword.getText().trim();
+            if (newPassword.isEmpty()) {
+                showAlert("Lỗi", "Vui lòng nhập mật khẩu mới vào ô bên trên!", Alert.AlertType.ERROR);
+                return;
+            }
+
+            JsonObject payload = new JsonObject();
+            payload.addProperty("id", selected.getId());
+            payload.addProperty("newPassword", newPassword);
+
+            ClientApplication.getChatClient().sendPacket(new Packet("ADMIN_RESET_PASSWORD", payload.toString()));
+            txtAdminNewPassword.clear();
         }
     }
 }

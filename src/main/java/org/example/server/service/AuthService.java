@@ -62,6 +62,10 @@ public class AuthService {
             User user = userDAO.findByUsername(username);
 
             if (user != null && PasswordUtil.checkPassword(plainPassword, user.getPasswordHash())) {
+                if (user.isLocked()) {
+                    client.sendPacket(new Packet("LOGIN_ERROR", "Tài khoản của bạn đã bị khóa bởi Admin!"));
+                    return;
+                }
                 client.setCurrentUsername(username);
                 userDAO.updateUserStatus(username, "ONLINE");
 
@@ -118,5 +122,19 @@ public class AuthService {
             names.add(friendName);
         }
         return names;
+    }
+
+    public void handleGetUserInfo(ClientHandler client) {
+        String username = client.getCurrentUsername();
+        if (username != null) {
+            User user = userDAO.findByUsername(username);
+            if (user != null) {
+                JsonObject userInfo = new JsonObject();
+                userInfo.addProperty("username", user.getUsername());
+                userInfo.addProperty("fullName", user.getFullName());
+                userInfo.addProperty("role", user.getRole());
+                client.sendPacket(new Packet("USER_INFO", userInfo.toString()));
+            }
+        }
     }
 }

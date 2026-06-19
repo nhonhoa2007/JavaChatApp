@@ -1,6 +1,9 @@
 package org.example.server.network;
 
 import org.example.common.network.Packet;
+import org.example.common.model.User;
+import org.example.server.dao.UserDAO;
+import org.example.server.util.PasswordUtil;
 import org.example.server.service.CallService;
 
 import java.net.ServerSocket;
@@ -33,6 +36,40 @@ public class ServerManager {
             udpRelayService.start();
         } catch (Exception e) {
             System.err.println("Failed to start UDP relay: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // Ensure Users.full_name is NVARCHAR to support Vietnamese characters
+        try {
+            try (org.hibernate.Session session = org.example.server.util.HibernateUtil.getSessionFactory().openSession()) {
+                org.hibernate.Transaction tx = session.beginTransaction();
+                session.createNativeQuery("ALTER TABLE Users ALTER COLUMN full_name NVARCHAR(100)", Object.class).executeUpdate();
+                tx.commit();
+                System.out.println("Users.full_name altered to NVARCHAR(100)");
+            } catch (Exception ignored) {}
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Auto create or force reset default admin account
+        try {
+            UserDAO userDAO = new UserDAO();
+            User admin = userDAO.findByUsername("admin");
+            if (admin == null) {
+                String hashedPw = PasswordUtil.hashPassword("admin123");
+                admin = new User("admin", hashedPw, "System Administrator");
+                admin.setRole("ADMIN");
+                userDAO.saveUser(admin);
+                System.out.println("Default admin account created: admin / admin123");
+            } else {
+                // Đảm bảo mật khẩu và quyền là admin123 / ADMIN
+                admin.setPasswordHash(PasswordUtil.hashPassword("admin123"));
+                admin.setRole("ADMIN");
+                userDAO.updateUser(admin);
+                System.out.println("Default admin account reset to: admin / admin123");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to create default admin account: " + e.getMessage());
             e.printStackTrace();
         }
 

@@ -6,6 +6,7 @@ import org.example.server.service.CallService;
 import org.example.server.service.ChatService;
 import org.example.server.service.FriendService;
 import org.example.server.service.MessageService;
+import org.example.server.service.AdminService;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -23,6 +24,7 @@ public class ClientHandler implements Runnable {
     private final MessageService messageService;
     private final FriendService friendService;
     private final CallService callService;
+    private final AdminService adminService;
 
     public ClientHandler(Socket socket, ServerManager serverManager) {
         this.socket = socket;
@@ -31,6 +33,7 @@ public class ClientHandler implements Runnable {
         this.messageService = new MessageService(serverManager);
         this.friendService = new FriendService(serverManager);
         this.callService = serverManager.getCallService();
+        this.adminService = new AdminService(serverManager);
     }
 
     @Override
@@ -63,6 +66,10 @@ public class ClientHandler implements Runnable {
                 authService.handleLogin(packet.getPayload(), this);
                 // Không load friends ở đây — client sẽ tự gửi LOAD_FRIENDS_REQUEST
                 // khi ChatController đã initialize xong và sẵn sàng nhận response.
+                break;
+
+            case "GET_USER_INFO":
+                authService.handleGetUserInfo(this);
                 break;
 
             case "LOAD_HISTORY_REQUEST":
@@ -158,6 +165,22 @@ public class ClientHandler implements Runnable {
             case "CALL_BUSY":
                 // Client gửi BUSY khi nhận invite mà đang bận — server chỉ forward
                 callService.handleReject(packet.getPayload(), this);
+                break;
+
+            case "ADMIN_GET_USERS":
+                adminService.handleGetUsers(this);
+                break;
+            case "ADMIN_CREATE_USER":
+                adminService.handleCreateUser(packet.getPayload(), this);
+                break;
+            case "ADMIN_UPDATE_USER":
+                adminService.handleUpdateUser(packet.getPayload(), this);
+                break;
+            case "ADMIN_RESET_PASSWORD":
+                adminService.handleResetPassword(packet.getPayload(), this);
+                break;
+            case "ADMIN_TOGGLE_LOCK":
+                adminService.handleToggleLock(packet.getPayload(), this);
                 break;
 
             case "LOGOUT_REQUEST":

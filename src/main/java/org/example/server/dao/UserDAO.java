@@ -54,6 +54,22 @@ public class UserDAO {
         }
     }
 
+    public boolean updateUser(User user) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.merge(user);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public java.util.List<User> findAllUsers() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM User";

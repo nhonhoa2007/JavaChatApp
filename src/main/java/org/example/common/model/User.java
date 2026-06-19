@@ -18,7 +18,7 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(name = "full_name", length = 100)
+    @Column(name = "full_name", columnDefinition = "nvarchar(100)")
     private String fullName;
 
     @Column(name = "avatar", length = 255)
@@ -30,6 +30,12 @@ public class User {
     @Column(name = "last_seen")
     private LocalDateTime lastSeen;
 
+    @Column(name = "role", length = 20)
+    private String role = "USER";
+
+    @Column(name = "locked")
+    private Boolean locked = false;
+
     public User() {
     }
 
@@ -39,6 +45,8 @@ public class User {
         this.fullName = fullName;
         this.status = "OFFLINE";
         this.lastSeen = LocalDateTime.now();
+        this.role = "USER";
+        this.locked = false;
     }
 
     public Long getId() {
@@ -95,6 +103,22 @@ public class User {
 
     public void setLastSeen(LocalDateTime lastSeen) {
         this.lastSeen = lastSeen;
+    }
+
+    public String getRole() {
+        return role != null ? role : "USER";
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public boolean isLocked() {
+        return locked != null && locked;
+    }
+
+    public void setLocked(Boolean locked) {
+        this.locked = locked;
     }
 
     @Override

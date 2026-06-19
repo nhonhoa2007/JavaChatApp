@@ -280,3 +280,79 @@
     -fx-background-color: #dbeafe;
     -fx-text-fill: #1e3a8a;
 }
+
+/* Admin Dashboard Styles */
+.admin-table {
+    -fx-background-color: white;
+    -fx-background-radius: 8px;
+    -fx-border-color: #d9e1ec;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-padding: 0;
+}
+
+.admin-table .column-header-background {
+    -fx-background-color: #f1f5f9;
+    -fx-background-radius: 8px 8px 0 0;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.admin-table .column-header {
+    -fx-background-color: transparent;
+    -fx-font-weight: bold;
+    -fx-size: 35px;
+    -fx-text-fill: #475569;
+}
+
+.admin-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: #f1f5f9;
+    -fx-border-width: 0 0 1px 0;
+    -fx-cell-size: 38px;
+}
+
+.admin-table .table-row-cell:filled:hover {
+    -fx-background-color: #f8fafc;
+}
+
+.admin-table .table-row-cell:filled:selected {
+    -fx-background-color: #dbeafe;
+}
+
+.admin-table .table-cell {
+    -fx-text-fill: #1e293b;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 10px 0 10px;
+}
+
+.admin-details-pane {
+    -fx-background-color: white;
+    -fx-background-radius: 10px;
+    -fx-border-color: #d9e1ec;
+    -fx-border-radius: 10px;
+    -fx-border-width: 1px;
+    -fx-padding: 16px;
+}
+
+.form-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #64748b;
+}
+
+.app-input-disabled {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #64748b;
+    -fx-border-color: #cbd5e1;
+}
+
+.app-combobox {
+    -fx-background-color: white;
+    -fx-background-radius: 8px;
+    -fx-border-color: #d9e1ec;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-min-height: 38px;
+}
+

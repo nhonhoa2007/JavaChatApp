@@ -53,4 +53,15 @@ public class UserDAO {
             e.printStackTrace();
         }
     }
+
+    public java.util.List<User> findAllUsers() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM User";
+            Query<User> query = session.createQuery(hql, User.class);
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
 }

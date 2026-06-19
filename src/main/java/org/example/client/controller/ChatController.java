@@ -15,6 +15,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -38,6 +39,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.text.Normalizer;
+import java.util.regex.Pattern;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
@@ -49,8 +52,27 @@ import javax.sound.sampled.LineUnavailableException;
 
 public class ChatController {
 
+    public static class SearchUserResult {
+        private final String username;
+        private final String relation; // FRIEND, PENDING_SENT, PENDING_RECEIVED, NONE
+        private final String status; // ONLINE, OFFLINE
+
+        public SearchUserResult(String username, String relation, String status) {
+            this.username = username;
+            this.relation = relation;
+            this.status = status;
+        }
+
+        public String getUsername() { return username; }
+        public String getRelation() { return relation; }
+        public String getStatus() { return status; }
+    }
+
     @FXML
     private ListView<String> listUsers;
+
+    @FXML
+    private ListView<SearchUserResult> listSearchResults;
 
     @FXML
     private ListView<String> listRequests;
@@ -66,9 +88,6 @@ public class ChatController {
 
     @FXML
     private TextArea txtMessage;
-
-    @FXML
-    private TextField txtAddFriend;
 
     @FXML
     private TextField txtSearchFriend;
@@ -112,6 +131,7 @@ public class ChatController {
     private String currentUsername;
     private final Map<Long, Integer> messageIdToIndexMap = new HashMap<>();
     private final ObservableList<String> allFriendItems = FXCollections.observableArrayList();
+    private final ObservableList<SearchUserResult> allSystemUsers = FXCollections.observableArrayList();
     private final Map<String, Long> groupDisplayToId = new HashMap<>();
     private final Map<Long, String> messageConversationMap = new HashMap<>();
     private final Map<Long, Label> reactionLabelMap = new HashMap<>();
@@ -157,6 +177,74 @@ public class ChatController {
 
     private String buildFriendDisplayText(String username, String status) {
         return username + ("ONLINE".equals(status) ? " [Online]" : " [Offline]");
+    }
+
+    private static String removeAccents(String src) {
+        if (src == null) return "";
+        String nfdNormalizedString = Normalizer.normalize(src, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(nfdNormalizedString).replaceAll("").replace('đ', 'd').replace('Đ', 'D');
+    }
+
+    private static int levenshteinDistance(String s1, String s2) {
+        int len1 = s1.length();
+        int len2 = s2.length();
+        int[] prev = new int[len2 + 1];
+        int[] curr = new int[len2 + 1];
+        for (int j = 0; j <= len2; j++) {
+            prev[j] = j;
+        }
+        for (int i = 1; i <= len1; i++) {
+            curr[0] = i;
+            for (int j = 1; j <= len2; j++) {
+                int cost = (s1.charAt(i - 1) == s2.charAt(j - 1)) ? 0 : 1;
+                curr[j] = Math.min(Math.min(curr[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            int[] temp = prev;
+            prev = curr;
+            curr = temp;
+        }
+        return prev[len2];
+    }
+
+    private static boolean isSubsequence(String str, String query) {
+        int i = 0, j = 0;
+        while (i < str.length() && j < query.length()) {
+            if (str.charAt(i) == query.charAt(j)) {
+                j++;
+            }
+            i++;
+        }
+        return j == query.length();
+    }
+
+    private static double computeSearchScore(String username, String query) {
+        if (query == null || query.isEmpty()) {
+            return 1.0;
+        }
+        
+        String normUser = removeAccents(username).toLowerCase();
+        String normQuery = removeAccents(query).toLowerCase();
+        
+        if (normUser.equals(normQuery)) {
+            return 100.0;
+        }
+        if (normUser.startsWith(normQuery)) {
+            return 90.0 + (double) normQuery.length() / normUser.length();
+        }
+        if (normUser.contains(normQuery)) {
+            return 80.0 + (double) normQuery.length() / normUser.length();
+        }
+        if (isSubsequence(normUser, normQuery)) {
+            return 60.0 + (double) normQuery.length() / normUser.length();
+        }
+        if (normQuery.length() >= 3) {
+            int distance = levenshteinDistance(normUser, normQuery);
+            if (distance <= 2) {
+                return 50.0 - distance;
+            }
+        }
+        return 0.0;
     }
 
     private String privateConversationKey(String username) {
@@ -234,6 +322,7 @@ public class ChatController {
     @FXML
     public void handleShowSearchView(ActionEvent event) {
         switchView(viewSearch);
+        requestSearchAllUsers();
     }
 
     @FXML
@@ -255,11 +344,12 @@ public class ChatController {
 
     private void applyFriendFilter() {
         String selectedUsername = extractUsername(listUsers.getSelectionModel().getSelectedItem());
-        String keyword = txtSearchFriend == null ? "" : txtSearchFriend.getText().trim().toLowerCase();
+        String keyword = txtSearchFriend == null ? "" : txtSearchFriend.getText().trim();
 
+        // 1. Update the original listUsers (Contacts tab) with simple substring filter
         listUsers.getItems().setAll(
                 allFriendItems.stream()
-                        .filter(item -> keyword.isEmpty() || extractUsername(item).toLowerCase().contains(keyword))
+                        .filter(item -> keyword.isEmpty() || extractUsername(item).toLowerCase().contains(keyword.toLowerCase()))
                         .toList()
         );
 
@@ -269,6 +359,36 @@ public class ChatController {
                     listUsers.getSelectionModel().select(item);
                     break;
                 }
+            }
+        }
+
+        // 2. Update listSearchResults (Search tab) using the fuzzy/typo-tolerant scoring algorithm
+        if (listSearchResults != null) {
+            if (keyword.isEmpty()) {
+                // If search is empty, display all system users sorted alphabetically
+                listSearchResults.getItems().setAll(
+                        allSystemUsers.stream()
+                                .sorted((a, b) -> a.getUsername().compareToIgnoreCase(b.getUsername()))
+                                .toList()
+                );
+            } else {
+                class SearchResult {
+                    final SearchUserResult user;
+                    final double score;
+                    SearchResult(SearchUserResult user, double score) {
+                        this.user = user;
+                        this.score = score;
+                    }
+                }
+                
+                List<SearchUserResult> sortedResults = allSystemUsers.stream()
+                        .map(user -> new SearchResult(user, computeSearchScore(user.getUsername(), keyword)))
+                        .filter(obj -> obj.score > 0)
+                        .sorted((a, b) -> Double.compare(b.score, a.score))
+                        .map(obj -> obj.user)
+                        .toList();
+                
+                listSearchResults.getItems().setAll(sortedResults);
             }
         }
     }
@@ -396,6 +516,126 @@ public class ChatController {
                 switchToRecentConversations();
             }
         });
+
+        if (listSearchResults != null) {
+            listSearchResults.setCellFactory(lv -> new ListCell<>() {
+                private final HBox hbox = new HBox(10);
+                private final Label lblStatus = new Label("●");
+                private final Label lblName = new Label();
+                private final Label lblRelation = new Label();
+                private final Button btnAction = new Button();
+                private final Region spacer = new Region();
+
+                {
+                    hbox.setAlignment(Pos.CENTER_LEFT);
+                    hbox.setStyle("-fx-padding: 5 10 5 10;");
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+                    
+                    lblRelation.setStyle("-fx-text-fill: #64748b; -fx-font-style: italic; -fx-font-size: 12px;");
+                    
+                    // Styled buttons
+                    btnAction.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-background-radius: 4px; -fx-font-size: 12px; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
+                    
+                    hbox.getChildren().addAll(lblStatus, lblName, lblRelation, spacer, btnAction);
+                }
+
+                @Override
+                protected void updateItem(SearchUserResult item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                        setText(null);
+                    } else {
+                        // 1. Status dot
+                        if ("ONLINE".equals(item.getStatus())) {
+                            lblStatus.setStyle("-fx-text-fill: #22c55e; -fx-font-size: 14px;");
+                        } else {
+                            lblStatus.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 14px;");
+                        }
+
+                        // 2. Name
+                        lblName.setText(item.getUsername());
+                        lblName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1e293b;");
+
+                        // 3. Relation & Button
+                        switch (item.getRelation()) {
+                            case "FRIEND":
+                                lblRelation.setText("(bạn bè)");
+                                btnAction.setVisible(false);
+                                btnAction.setManaged(false);
+                                break;
+                            case "PENDING_SENT":
+                                lblRelation.setText("");
+                                btnAction.setText("Đã gửi");
+                                btnAction.setDisable(true);
+                                btnAction.setStyle("-fx-background-color: #cbd5e1; -fx-text-fill: #64748b; -fx-background-radius: 4px; -fx-font-size: 12px; -fx-padding: 4 8 4 8;");
+                                btnAction.setVisible(true);
+                                btnAction.setManaged(true);
+                                break;
+                            case "PENDING_RECEIVED":
+                                lblRelation.setText("");
+                                btnAction.setText("Chấp nhận");
+                                btnAction.setDisable(false);
+                                btnAction.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-background-radius: 4px; -fx-font-size: 12px; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
+                                btnAction.setVisible(true);
+                                btnAction.setManaged(true);
+                                btnAction.setOnAction(e -> handleAcceptFriendFromSearch(item.getUsername()));
+                                break;
+                            case "NONE":
+                            default:
+                                lblRelation.setText("");
+                                btnAction.setText("Thêm bạn");
+                                btnAction.setDisable(false);
+                                btnAction.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-background-radius: 4px; -fx-font-size: 12px; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
+                                btnAction.setVisible(true);
+                                btnAction.setManaged(true);
+                                btnAction.setOnAction(e -> handleAddFriendFromSearch(item.getUsername()));
+                                break;
+                        }
+                        setGraphic(hbox);
+                    }
+                }
+            });
+
+            // Click listener
+            listSearchResults.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                if (suppressConversationSelection || newValue == null) {
+                    return;
+                }
+                // Click on search result is only for chatting with friends
+                if ("FRIEND".equals(newValue.getRelation())) {
+                    String selectedUser = newValue.getUsername();
+                    suppressConversationSelection = true;
+                    try {
+                        if (listGroups != null) {
+                            listGroups.getSelectionModel().clearSelection();
+                        }
+                        if (listUsers != null) {
+                            listUsers.getSelectionModel().clearSelection();
+                        }
+                    } finally {
+                        suppressConversationSelection = false;
+                    }
+                    currentConversationKey = privateConversationKey(selectedUser);
+                    lblChatTitle.setText("Chat với: " + selectedUser);
+                    loadHistory(selectedUser);
+                    updateControlButtons(selectedUser);
+                    switchView(viewChat);
+                    switchToChatMessages();
+                    addToRecentConversations(selectedUser, currentConversationKey);
+                }
+                
+                // Clear selection so selecting again works
+                Platform.runLater(() -> {
+                    suppressConversationSelection = true;
+                    try {
+                        listSearchResults.getSelectionModel().clearSelection();
+                    } finally {
+                        suppressConversationSelection = false;
+                    }
+                });
+            });
+        }
 
         if (listGroups != null) {
             listGroups.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
@@ -692,6 +932,9 @@ public class ChatController {
                 case "LOAD_FRIENDS_SUCCESS":
                     handleLoadFriendsSuccess(packet.getPayload());
                     break;
+                case "SEARCH_ALL_USERS_SUCCESS":
+                    handleSearchAllUsersSuccess(packet.getPayload());
+                    break;
                 case "GROUP_LIST":
                     handleGroupList(packet.getPayload());
                     break;
@@ -714,13 +957,14 @@ public class ChatController {
                     break;
                 case "FRIEND_SUCCESS":
                     showAlert("Thông báo", packet.getPayload(), Alert.AlertType.INFORMATION);
-                    txtAddFriend.clear();
+                    requestSearchAllUsers();
                     break;
                 case "FRIEND_ERROR":
                     showAlert("Lỗi Kết Bạn", packet.getPayload(), Alert.AlertType.ERROR);
                     break;
                 case "RELOAD_FRIENDS":
                     ClientApplication.getChatClient().sendPacket(new Packet("LOAD_FRIENDS_REQUEST", ""));
+                    requestSearchAllUsers();
                     break;
                 case "BLOCK_SUCCESS":
                 case "MUTE_SUCCESS":
@@ -827,6 +1071,39 @@ public class ChatController {
         }
     }
 
+    private void handleSearchAllUsersSuccess(String payload) {
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        JsonArray users = json.getAsJsonArray("users");
+
+        allSystemUsers.clear();
+        for (int i = 0; i < users.size(); i++) {
+            JsonObject u = users.get(i).getAsJsonObject();
+            String username = u.get("username").getAsString();
+            String status = u.get("status").getAsString();
+            String relation = u.get("relation").getAsString();
+
+            allSystemUsers.add(new SearchUserResult(username, relation, status));
+        }
+
+        applyFriendFilter();
+    }
+
+    private void requestSearchAllUsers() {
+        ClientApplication.getChatClient().sendPacket(new Packet("SEARCH_ALL_USERS_REQUEST", ""));
+    }
+
+    private void handleAddFriendFromSearch(String username) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("friendUsername", username);
+        ClientApplication.getChatClient().sendPacket(new Packet("ADD_FRIEND_REQUEST", payload.toString()));
+    }
+
+    private void handleAcceptFriendFromSearch(String username) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("senderUsername", username);
+        ClientApplication.getChatClient().sendPacket(new Packet("ACCEPT_FRIEND_REQUEST", payload.toString()));
+    }
+
     private void handleNewFriendRequest(String payload) {
         JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
         String from = json.get("from").getAsString();
@@ -866,6 +1143,15 @@ public class ChatController {
                         String newText = buildFriendDisplayText(user, status);
                         listUsers.getItems().set(i, newText);
                         break;
+                    }
+                }
+                if (listSearchResults != null) {
+                    for (int i = 0; i < listSearchResults.getItems().size(); i++) {
+                        SearchUserResult visibleItem = listSearchResults.getItems().get(i);
+                        if (user.equals(visibleItem.getUsername())) {
+                            listSearchResults.getItems().set(i, new SearchUserResult(user, visibleItem.getRelation(), status));
+                            break;
+                        }
                     }
                 }
                 // Restore selection nếu đang chọn user này
@@ -1134,16 +1420,6 @@ public class ChatController {
         if (reactionLabel != null) {
             reactionLabel.setText(formatReactionSummary(json.getAsJsonArray("reactions")));
         }
-    }
-
-    @FXML
-    public void handleAddFriend(ActionEvent event) {
-        String friendUsername = txtAddFriend.getText().trim();
-        if (friendUsername.isEmpty()) return;
-
-        JsonObject payload = new JsonObject();
-        payload.addProperty("friendUsername", friendUsername);
-        ClientApplication.getChatClient().sendPacket(new Packet("ADD_FRIEND_REQUEST", payload.toString()));
     }
 
     @FXML

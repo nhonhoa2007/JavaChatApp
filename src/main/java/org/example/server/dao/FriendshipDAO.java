@@ -166,4 +166,16 @@ public class FriendshipDAO {
             return false;
         }
     }
+
+    public List<Friendship> getAllFriendships(User user) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM Friendship f WHERE f.user.id = :userId OR f.friend.id = :userId";
+            Query<Friendship> query = session.createQuery(hql, Friendship.class);
+            query.setParameter("userId", user.getId());
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
 }

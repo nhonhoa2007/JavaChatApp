@@ -125,6 +125,10 @@ public class ClientHandler implements Runnable {
                 friendService.handleLoadFriends(this);
                 break;
 
+            case "SEARCH_ALL_USERS_REQUEST":
+                friendService.handleSearchAllUsers(this);
+                break;
+
             case "BLOCK_USER_REQUEST":
                 friendService.handleBlockUser(packet.getPayload(), this);
                 break;

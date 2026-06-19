@@ -19,12 +19,9 @@
         <StackPane fx:id="contentStack" styleClass="content-stack">
             <VBox fx:id="viewSearch" spacing="12.0" styleClass="utility-view">
                 <Label styleClass="view-title" text="Tìm kiếm và thêm bạn bè" />
-                <TextField fx:id="txtSearchFriend" promptText="Tìm theo username trong danh bạ..." styleClass="app-input" />
-                <HBox spacing="10.0">
-                    <TextField fx:id="txtAddFriend" promptText="Nhập username muốn kết bạn..." styleClass="app-input" HBox.hgrow="ALWAYS" />
-                    <Button onAction="#handleAddFriend" styleClass="primary-button" text="Thêm" />
-                </HBox>
-                <Label styleClass="muted-label" text="Kết quả tìm kiếm áp dụng trên danh sách ở mục Danh bạ." />
+                <TextField fx:id="txtSearchFriend" promptText="Tìm kiếm bạn bè..." styleClass="app-input" />
+                <Label styleClass="section-label" text="Kết quả tìm kiếm bạn bè:" />
+                <ListView fx:id="listSearchResults" styleClass="panel-list" VBox.vgrow="ALWAYS" />
             </VBox>
             <VBox fx:id="viewChat" managed="false" spacing="0.0" visible="false">
                 <StackPane styleClass="chat-workspace" VBox.vgrow="ALWAYS">

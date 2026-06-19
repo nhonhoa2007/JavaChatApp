@@ -14,6 +14,8 @@ import org.example.server.network.ServerManager;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
 public class FriendService {
     private final ServerManager serverManager;
@@ -227,6 +229,67 @@ public class FriendService {
 
                 handleLoadFriends(client);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void handleSearchAllUsers(ClientHandler client) {
+        try {
+            User currentUser = userDAO.findByUsername(client.getCurrentUsername());
+            if (currentUser == null) return;
+
+            List<User> allUsers = userDAO.findAllUsers();
+            List<Friendship> friendships = friendshipDAO.getAllFriendships(currentUser);
+            
+            // Build a map of username -> Friendship for O(1) lookup
+            Map<String, Friendship> friendshipMap = new HashMap<>();
+            for (Friendship f : friendships) {
+                String other = f.getUser().getUsername().equals(currentUser.getUsername()) 
+                        ? f.getFriend().getUsername() 
+                        : f.getUser().getUsername();
+                friendshipMap.put(other, f);
+            }
+
+            // Get active clients to check online status
+            Set<String> onlineUsernames = new HashSet<>();
+            for (ClientHandler ch : serverManager.getActiveClients()) {
+                if (ch.getCurrentUsername() != null) {
+                    onlineUsernames.add(ch.getCurrentUsername());
+                }
+            }
+
+            JsonObject responseJson = new JsonObject();
+            JsonArray usersArray = new JsonArray();
+
+            for (User u : allUsers) {
+                if (u.getUsername().equals(currentUser.getUsername())) {
+                    continue; // Skip self
+                }
+
+                JsonObject userObj = new JsonObject();
+                userObj.addProperty("username", u.getUsername());
+                userObj.addProperty("status", onlineUsernames.contains(u.getUsername()) ? "ONLINE" : "OFFLINE");
+
+                String relation = "NONE";
+                Friendship f = friendshipMap.get(u.getUsername());
+                if (f != null) {
+                    if ("ACCEPTED".equals(f.getStatus())) {
+                        relation = "FRIEND";
+                    } else if ("PENDING".equals(f.getStatus())) {
+                        if (f.getUser().getUsername().equals(currentUser.getUsername())) {
+                            relation = "PENDING_SENT";
+                        } else {
+                            relation = "PENDING_RECEIVED";
+                        }
+                    }
+                }
+                userObj.addProperty("relation", relation);
+                usersArray.add(userObj);
+            }
+
+            responseJson.add("users", usersArray);
+            client.sendPacket(new Packet("SEARCH_ALL_USERS_SUCCESS", responseJson.toString()));
         } catch (Exception e) {
             e.printStackTrace();
         }

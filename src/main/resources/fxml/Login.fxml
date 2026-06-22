@@ -7,23 +7,23 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.geometry.Insets?>
 
-<VBox alignment="CENTER" spacing="15.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="org.example.client.controller.LoginController" style="-fx-background-color: #f4f4f4;">
+<VBox alignment="CENTER" spacing="16.0" stylesheets="@../styles/chat.css" styleClass="chat-root" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controller.LoginController" style="-fx-background-color: #f6f8fb;">
 
     <padding>
-        <Insets bottom="30.0" left="40.0" right="40.0" top="30.0"/>
+        <Insets bottom="40.0" left="40.0" right="40.0" top="40.0"/>
     </padding>
 
-    <Label text="Java Chat Application" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+    <Label text="Java Chat Application" styleClass="view-title" style="-fx-font-size: 22px; -fx-margin-bottom: 10px;"/>
 
-    <TextField fx:id="txtUsername" promptText="Username" style="-fx-pref-width: 200px; -fx-pref-height: 30px;"/>
+    <TextField fx:id="txtUsername" promptText="Username" styleClass="app-input" style="-fx-pref-width: 240px; -fx-pref-height: 38px;"/>
 
-    <PasswordField fx:id="txtPassword" promptText="Password" style="-fx-pref-width: 200px; -fx-pref-height: 30px;"/>
+    <PasswordField fx:id="txtPassword" promptText="Password" styleClass="app-input" style="-fx-pref-width: 240px; -fx-pref-height: 38px;"/>
 
-    <Label fx:id="lblStatus" textFill="RED" wrapText="true" maxWidth="200"/>
+    <Label fx:id="lblStatus" textFill="RED" wrapText="true" maxWidth="240" style="-fx-font-size: 12px;"/>
 
-    <Button text="Login" onAction="#handleLogin" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-pref-width: 200px; -fx-pref-height: 35px; -fx-font-weight: bold; -fx-cursor: hand;"/>
+    <Button text="Đăng nhập" onAction="#handleLogin" styleClass="primary-button" style="-fx-pref-width: 240px; -fx-pref-height: 40px; -fx-cursor: hand;"/>
 
-    <Button text="Register a New Account" onAction="#handleRegister" style="-fx-background-color: transparent; -fx-text-fill: #2196F3; -fx-underline: true; -fx-cursor: hand;"/>
+    <Button text="Tạo tài khoản mới" onAction="#handleRegister" style="-fx-background-color: transparent; -fx-text-fill: #2563eb; -fx-underline: true; -fx-cursor: hand; -fx-font-weight: bold;"/>
 
 </VBox>

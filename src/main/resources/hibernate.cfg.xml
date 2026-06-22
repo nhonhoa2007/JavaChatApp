@@ -8,11 +8,7 @@
         <property name="hibernate.connection.driver_class">com.microsoft.sqlserver.jdbc.SQLServerDriver</property>
         <property name="hibernate.connection.url">jdbc:sqlserver://localhost:1433;databaseName=ChatManagement;encrypt=true;trustServerCertificate=true;</property>
         <property name="hibernate.connection.username">sa</property>
-<<<<<<< HEAD
         <property name="hibernate.connection.password">26052007</property>
-=======
-        <property name="hibernate.connection.password">vanh110607</property>
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
         <property name="hibernate.connection.pool_size">10</property>
         <property name="hibernate.dialect">org.hibernate.dialect.SQLServerDialect</property>

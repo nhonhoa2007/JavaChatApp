@@ -3,7 +3,7 @@ package org.example.common.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-// Entity lưu lịch sử cuộc gọi
+// lưu lịch sử cuộc gọi
 @Entity
 @Table(name = "CallLogs")
 public class CallLog {
@@ -21,22 +21,22 @@ public class CallLog {
     @JoinColumn(name = "callee_id", nullable = false)
     private User callee;
 
-    // "VOICE" hoặc "VIDEO"
+    // loại cuộc gọi thoại hoặc video
     @Column(name = "call_type", length = 10, nullable = false)
     private String callType;
 
-    // COMPLETED, MISSED, REJECTED, CANCELED, FAILED
+    // trạng thái kết thúc cuộc gọi
     @Column(name = "status", length = 20, nullable = false)
     private String status;
 
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
-    // null nếu cuộc gọi chưa được kết nối
+    // thời điểm kết nối nếu có
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
-    // Thời lượng (giây), null nếu chưa kết nối
+    // thời lượng cuộc gọi tính bằng giây
     @Column(name = "duration_sec")
     private Integer durationSec;
 

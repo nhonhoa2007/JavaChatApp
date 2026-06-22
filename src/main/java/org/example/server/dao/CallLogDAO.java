@@ -25,7 +25,7 @@ public class CallLogDAO {
         }
     }
 
-    // Lấy lịch sử cuộc gọi của user (cả gọi đi và nhận), mới nhất trước
+    // lấy lịch sử cuộc gọi của user theo thứ tự mới nhất
     public List<CallLog> getCallHistory(User user, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM CallLog c WHERE c.caller.id = :userId OR c.callee.id = :userId ORDER BY c.startedAt DESC";
@@ -39,7 +39,7 @@ public class CallLogDAO {
         }
     }
 
-    // Lấy call logs giữa 2 user cụ thể, sắp theo thời gian cũ → mới
+    // lấy lịch sử cuộc gọi giữa hai user theo thứ tự cũ nhất
     public List<CallLog> getCallHistoryBetween(User user1, User user2, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM CallLog c WHERE " +

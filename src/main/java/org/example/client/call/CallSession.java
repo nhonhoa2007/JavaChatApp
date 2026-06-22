@@ -29,9 +29,13 @@ public class CallSession {
     public Instant startedAt;
     public Instant connectedAt;
 
-    // Audio threads (Phase 3)
+    // luồng âm thanh của cuộc gọi
     public AudioCaptureThread captureThread;
     public AudioPlaybackThread playbackThread;
 
-
+    // luồng video của cuộc gọi
+    public DatagramSocket videoUdpSocket;
+    public int localVideoUdpPort;
+    public VideoCaptureThread videoCaptureThread;
+    public VideoPlaybackThread videoPlaybackThread;
 }

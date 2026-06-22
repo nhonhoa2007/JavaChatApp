@@ -9,7 +9,7 @@ public final class CallPacketTypes {
     public static final String END         = "CALL_END";
     public static final String BUSY        = "CALL_BUSY";
     public static final String FAILED      = "CALL_FAILED";
-    //lý do từ chối
+    // lý do từ chối cuộc gọi
     public static final String REASON_USER_REJECT    = "USER_REJECT";
     public static final String REASON_MISSED         = "MISSED";
     public static final String REASON_TIMEOUT        = "TIMEOUT";

@@ -9,7 +9,7 @@ import org.example.client.call.CallSession;
 import org.example.client.call.RingtonePlayer;
 import org.example.common.network.CallPacketTypes;
 
-// Controller cho popup nhận cuộc gọi đến
+// điều khiển popup nhận cuộc gọi đến
 public class IncomingCallController {
 
     @FXML private Label lblCallerName;
@@ -38,7 +38,7 @@ public class IncomingCallController {
         closeWindow();
     }
 
-    // Gọi từ bên ngoài khi cuộc gọi bị cancel/timeout
+    // đóng popup khi cuộc gọi bị hủy hoặc timeout
     public void forceClose() {
         RingtonePlayer.getInstance().stop();
         closeWindow();

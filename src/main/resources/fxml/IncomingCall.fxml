@@ -16,21 +16,21 @@
         <Insets bottom="30.0" left="30.0" right="30.0" top="40.0"/>
     </padding>
 
-    <!-- Icon -->
+    <!-- biểu tượng -->
     <Label text="📞" style="-fx-font-size: 56px;"/>
 
-    <!-- Title -->
+    <!-- tiêu đề -->
     <Label text="Cuộc gọi đến" style="-fx-font-size: 14px; -fx-text-fill: #94a3b8;"/>
 
-    <!-- Caller name -->
+    <!-- tên người gọi -->
     <Label fx:id="lblCallerName" text="Username"
            style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;"/>
 
-    <!-- Call type -->
+    <!-- loại cuộc gọi -->
     <Label fx:id="lblCallType" text="Voice Call"
            style="-fx-font-size: 13px; -fx-text-fill: #64748b;"/>
 
-    <!-- Buttons -->
+    <!-- nút thao tác -->
     <HBox alignment="CENTER" spacing="30.0">
         <padding>
             <Insets top="20.0"/>

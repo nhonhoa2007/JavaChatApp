@@ -18,14 +18,10 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-<<<<<<< HEAD
     @Column(name = "full_name", columnDefinition = "nvarchar(100)")
-=======
-    @Column(name = "full_name", length = 100)
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     private String fullName;
 
-    @Column(name = "avatar", length = 255)
+    @Column(name = "avatar", columnDefinition = "VARCHAR(MAX)")
     private String avatar;
 
     @Column(name = "status", length = 20)
@@ -34,15 +30,12 @@ public class User {
     @Column(name = "last_seen")
     private LocalDateTime lastSeen;
 
-<<<<<<< HEAD
     @Column(name = "role", length = 20)
     private String role = "USER";
 
     @Column(name = "locked")
     private Boolean locked = false;
 
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     public User() {
     }
 
@@ -52,11 +45,8 @@ public class User {
         this.fullName = fullName;
         this.status = "OFFLINE";
         this.lastSeen = LocalDateTime.now();
-<<<<<<< HEAD
         this.role = "USER";
         this.locked = false;
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     }
 
     public Long getId() {
@@ -115,7 +105,6 @@ public class User {
         this.lastSeen = lastSeen;
     }
 
-<<<<<<< HEAD
     public String getRole() {
         return role != null ? role : "USER";
     }
@@ -132,8 +121,6 @@ public class User {
         this.locked = locked;
     }
 
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     @Override
     public String toString() {
         return "User{" +

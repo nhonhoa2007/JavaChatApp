@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="viewGroups" spacing="10.0" styleClass="utility-view" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.GroupsViewController">
+    <Label styleClass="view-title" text="Group chat" />
+    <Label styleClass="section-label" text="Danh sách nhóm" />
+    <ListView fx:id="listGroups" styleClass="panel-list" VBox.vgrow="ALWAYS" />
+    <Label styleClass="section-label" text="Tạo nhóm (&gt;= 3 người)" />
+    <Button onAction="#handleCreateGroup" styleClass="group-button" text="Tạo nhóm" />
+</VBox>

@@ -7,35 +7,67 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.example.client.call.CallEventListener;
 import org.example.client.call.CallManager;
 import org.example.client.call.CallSession;
 
-// Controller cho màn hình cuộc gọi đang diễn ra (timer, mute, end)
+// điều khiển màn hình cuộc gọi đang diễn ra
 public class CallViewController implements CallEventListener {
 
+    @FXML private StackPane rootPane;
     @FXML private Label lblStatus;
     @FXML private Label lblPeerName;
     @FXML private Label lblTimer;
     @FXML private Label lblCallType;
+    @FXML private Label lblAvatar;
     @FXML private Button btnMute;
+    @FXML private Button btnCamera;
     @FXML private Button btnEnd;
+
+    @FXML private ImageView imgRemoteVideo;
+    @FXML private ImageView imgLocalVideo;
 
     private CallSession session;
     private Timeline timer;
     private int elapsedSeconds;
     private boolean muted;
+    private boolean cameraMuted;
 
     public void initData(CallSession session) {
         this.session = session;
         lblPeerName.setText(session.peerUsername);
-        lblCallType.setText("VOICE".equals(session.type) ? "Cuộc gọi thoại" : "Cuộc gọi video");
+
+        boolean isVideo = "VIDEO".equals(session.type);
+        lblCallType.setText(isVideo ? "Cuộc gọi video" : "Cuộc gọi thoại");
+
+        if (isVideo) {
+            btnCamera.setVisible(true);
+            btnCamera.setManaged(true);
+
+            // cấu hình kích cỡ khung video
+            imgRemoteVideo.setFitWidth(640);
+            imgRemoteVideo.setFitHeight(480);
+
+            // chỉnh kích thước cửa sổ cho cuộc gọi video
+            Platform.runLater(() -> {
+                Stage stage = (Stage) rootPane.getScene().getWindow();
+                if (stage != null) {
+                    stage.setWidth(656); // chiều rộng gồm viền cửa sổ
+                    stage.setHeight(520); // chiều cao gồm vùng điều khiển
+                    stage.setResizable(false);
+                    stage.centerOnScreen();
+                }
+            });
+        }
 
         if (session.state == CallSession.State.ACTIVE) {
             lblStatus.setText("Đã kết nối");
             startTimer();
+            registerVideoListeners();
         } else {
             lblStatus.setText("Đang kết nối...");
         }
@@ -43,11 +75,43 @@ public class CallViewController implements CallEventListener {
         CallManager.getInstance().addListener(this);
     }
 
+    private void registerVideoListeners() {
+        if (session == null) return;
+
+        // đăng ký nhận frame cục bộ từ camera
+        if (session.videoCaptureThread != null) {
+            session.videoCaptureThread.setFrameListener(img -> {
+                Platform.runLater(() -> {
+                    imgLocalVideo.setImage(img);
+                    if (!imgLocalVideo.isVisible()) {
+                        imgLocalVideo.setVisible(true);
+                    }
+                });
+            });
+        }
+
+        // đăng ký nhận frame từ người gọi còn lại
+        if (session.videoPlaybackThread != null) {
+            session.videoPlaybackThread.setFrameListener(img -> {
+                Platform.runLater(() -> {
+                    imgRemoteVideo.setImage(img);
+                    if (!imgRemoteVideo.isVisible()) {
+                        imgRemoteVideo.setVisible(true);
+                    }
+                    if (lblAvatar.isVisible()) {
+                        lblAvatar.setVisible(false);
+                    }
+                });
+            });
+        }
+    }
+
     @Override
     public void onCallActive(CallSession s) {
         Platform.runLater(() -> {
             lblStatus.setText("Đã kết nối");
             startTimer();
+            registerVideoListeners();
         });
     }
 
@@ -71,6 +135,16 @@ public class CallViewController implements CallEventListener {
     }
 
     @FXML
+    public void handleCameraToggle(ActionEvent event) {
+        cameraMuted = !cameraMuted;
+        CallManager.getInstance().setVideoMuted(cameraMuted);
+        btnCamera.setText(cameraMuted ? "❌📷" : "📷");
+        btnCamera.setStyle(cameraMuted
+                ? "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 20px; -fx-min-width: 56; -fx-min-height: 56; -fx-background-radius: 28; -fx-cursor: hand;"
+                : "-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 20px; -fx-min-width: 56; -fx-min-height: 56; -fx-background-radius: 28; -fx-cursor: hand;");
+    }
+
+    @FXML
     public void handleEnd(ActionEvent event) {
         stopTimer();
         CallManager.getInstance().removeListener(this);
@@ -78,7 +152,6 @@ public class CallViewController implements CallEventListener {
         closeWindow();
     }
 
-    // Gọi từ bên ngoài khi peer kết thúc cuộc gọi
     public void forceClose() {
         Platform.runLater(() -> {
             stopTimer();

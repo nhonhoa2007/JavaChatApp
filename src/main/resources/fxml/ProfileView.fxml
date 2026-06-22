@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+
+<VBox fx:id="viewProfile" alignment="TOP_LEFT" spacing="20.0" styleClass="utility-view" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ProfileViewController">
+    <padding>
+        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0"/>
+    </padding>
+
+    <!-- phần tiêu đề -->
+    <VBox spacing="5.0">
+        <Label styleClass="view-title" text="Thông tin cá nhân" />
+        <Label styleClass="muted-label" text="Quản lý thông tin tài khoản và hình đại diện của bạn" />
+    </VBox>
+
+    <Separator />
+
+    <!-- nội dung form -->
+    <GridPane hgap="15.0" vgap="15.0">
+        <columnConstraints>
+            <ColumnConstraints minWidth="120.0" prefWidth="120.0" />
+            <ColumnConstraints hgrow="ALWAYS" />
+        </columnConstraints>
+        
+        <!-- username chỉ đọc -->
+        <Label styleClass="form-label" text="Tên đăng nhập:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+        <Label fx:id="lblUsername" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #172033;" text="Username" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+        
+        <!-- họ tên có thể chỉnh sửa -->
+        <Label styleClass="form-label" text="Họ và tên:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+        <TextField fx:id="txtFullName" promptText="Nhập họ và tên hiển thị" styleClass="app-input" prefWidth="250.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+        
+        <!-- chọn avatar -->
+        <Label styleClass="form-label" text="Hình đại diện:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+        <HBox alignment="CENTER_LEFT" spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+            <StackPane style="-fx-background-color: #e2e8f0; -fx-background-radius: 40; -fx-min-width: 80; -fx-min-height: 80; -fx-pref-width: 80; -fx-pref-height: 80; -fx-max-width: 80; -fx-max-height: 80; -fx-overflow: hidden;">
+                <Label fx:id="lblAvatarEmoji" style="-fx-font-size: 40px;" text="🐶" />
+                <ImageView fx:id="imgAvatar" fitWidth="80" fitHeight="80" preserveRatio="true" visible="false" />
+            </StackPane>
+            <VBox spacing="8.0" alignment="CENTER_LEFT">
+                <ComboBox fx:id="cmbAvatar" styleClass="app-combobox" prefWidth="170.0" promptText="Chọn Emoji mẫu" />
+                <Button onAction="#handleUploadAvatar" styleClass="icon-button" style="-fx-font-size: 12px; -fx-min-width: 170px; -fx-min-height: 32px; -fx-pref-height: 32px;" text="Tải ảnh từ máy tính..." />
+            </VBox>
+        </HBox>
+    </GridPane>
+
+    <!-- phản hồi trạng thái -->
+    <Label fx:id="lblStatus" wrapText="true" style="-fx-font-size: 13px;" />
+
+    <Separator />
+
+    <!-- nút thao tác -->
+    <HBox spacing="15.0">
+        <Button onAction="#handleSaveProfile" styleClass="primary-button" text="Lưu thay đổi" />
+    </HBox>
+</VBox>

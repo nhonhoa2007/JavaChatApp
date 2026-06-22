@@ -56,11 +56,7 @@ public class GroupMemberDAO {
         }
     }
 
-    /**
-     * Batch query: lấy số lượng member cho nhiều nhóm cùng lúc.
-     * Thay vì N query getMembers().size(), chỉ cần 1 query GROUP BY.
-     * @return Map groupId → memberCount
-     */
+    // đếm số thành viên của nhiều nhóm bằng một query group by
     public Map<Long, Integer> getMemberCountBatch(List<Long> groupIds) {
         Map<Long, Integer> result = new HashMap<>();
         if (groupIds == null || groupIds.isEmpty()) return result;

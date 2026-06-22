@@ -2,6 +2,7 @@ package org.example.common.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.example.common.util.MessageEncryptionConverter;
 
 @Entity
 @Table(name = "Messages")
@@ -12,30 +13,31 @@ public class Message {
     @Column(name = "id")
     private Long id;
 
-    // The user who sends the message
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
 
-    // The user who receives the message (Null if it's a group message)
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "receiver_id")
     private User receiver;
 
-    // Group destination (null for private messages)
+    // nhóm nhận tin, null nếu là tin riêng
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "group_id")
     private GroupChat groupChat;
 
-    // Could be TEXT, IMAGE, VOICE, FILE
+    // loại nội dung tin nhắn
     @Column(name = "message_type", length = 20, nullable = false)
     private String messageType;
 
-    // Can store the text content OR a file path/base64 for images/voice
+    // lưu nội dung chữ hoặc dữ liệu file
     @Column(name = "content", columnDefinition = "NVARCHAR(MAX)", nullable = false)
+    @Convert(converter = MessageEncryptionConverter.class)
     private String content;
 
     @Column(name = "file_name", length = 255)
+    @Convert(converter = MessageEncryptionConverter.class)
     private String fileName;
 
     @Column(name = "is_read")

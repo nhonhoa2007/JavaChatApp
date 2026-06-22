@@ -19,11 +19,8 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.*;
 
-/**
- * Quản lý signaling cho voice/video call.
- * Instance duy nhất, hold bởi ServerManager.
- * Tất cả ClientHandler share cùng 1 CallService để track activeCalls.
- */
+// quản lý signaling cho cuộc gọi thoại và video
+// dùng chung một instance trong servermanager
 public class CallService {
 
     private final ServerManager serverManager;
@@ -31,11 +28,11 @@ public class CallService {
     private final UserDAO userDAO = new UserDAO();
     private final CallLogDAO callLogDAO = new CallLogDAO();
 
-    // State chia sẻ giữa tất cả connections
+    // trạng thái cuộc gọi dùng chung giữa các kết nối
     private final Map<String, CallSession> activeCalls = new ConcurrentHashMap<>();
     private final Map<String, String> userToCallId = new ConcurrentHashMap<>();
 
-    // Timeout scheduler cho RINGING state
+    // bộ hẹn giờ timeout cho trạng thái ringing
     private final ScheduledExecutorService timeoutExecutor = Executors.newScheduledThreadPool(1);
     private final Map<String, ScheduledFuture<?>> ringingTimeouts = new ConcurrentHashMap<>();
 
@@ -43,7 +40,7 @@ public class CallService {
         this.serverManager = serverManager;
     }
 
-    // ── Inner class: server-side call session ────────────────
+    // lưu phiên cuộc gọi phía server
 
     private static class CallSession {
         String callId;
@@ -58,7 +55,7 @@ public class CallService {
         Instant connectedAt;
     }
 
-    // ── Handle CALL_INVITE ──────────────────────────────────
+    // xử lý yêu cầu mời gọi
 
     public void handleInvite(String payload, ClientHandler callerClient) {
         var req = CallPayloads.fromJson(payload, CallPayloads.InviteRequest.class);
@@ -68,7 +65,7 @@ public class CallService {
         String callee = req.to();
         String callId = req.callId();
 
-        // Validate
+        // kiểm tra dữ liệu gọi
         if (caller.equals(callee)) {
             sendFailed(callerClient, callId, CallPacketTypes.REASON_SELF_CALL);
             return;
@@ -89,7 +86,7 @@ public class CallService {
             return;
         }
 
-        // Check block
+        // kiểm tra trạng thái chặn
         User callerUser = userDAO.findByUsername(caller);
         User calleeUser = userDAO.findByUsername(callee);
         if (callerUser == null || calleeUser == null) {
@@ -101,7 +98,7 @@ public class CallService {
             return;
         }
 
-        // Tạo session
+        // tạo phiên cuộc gọi
         CallSession session = new CallSession();
         session.callId = callId;
         session.callerUsername = caller;
@@ -114,17 +111,17 @@ public class CallService {
         userToCallId.put(caller, callId);
         userToCallId.put(callee, callId);
 
-        // Forward cho callee — gắn "from"
+        // chuyển lời mời đến người nhận
         var incoming = new CallPayloads.IncomingInvite(caller, callee, callId, req.type());
         calleeHandler.sendPacket(new Packet(CallPacketTypes.INVITE, CallPayloads.toJson(incoming)));
 
-        // Schedule timeout 30s
+        // đặt timeout 30 giây cho lời mời
         ScheduledFuture<?> timeout = timeoutExecutor.schedule(() -> {
             CallSession s = activeCalls.get(callId);
             if (s != null && s.state == CallSession.State.RINGING) {
                 var rejectPayload = new CallPayloads.RejectPayload(callId, CallPacketTypes.REASON_MISSED);
                 serverManager.sendToClient(caller, new Packet(CallPacketTypes.REJECT, CallPayloads.toJson(rejectPayload)));
-                // Cũng thông báo callee đóng popup
+                // thông báo người nhận đóng popup
                 serverManager.sendToClient(callee, new Packet(CallPacketTypes.CANCEL, CallPayloads.toJson(new CallPayloads.CallIdPayload(callId))));
                 cleanup(callId, "MISSED");
             }
@@ -134,7 +131,7 @@ public class CallService {
         log(callId, "INVITE " + caller + " → " + callee);
     }
 
-    // ── Handle CALL_ACCEPT ──────────────────────────────────
+    // xử lý chấp nhận cuộc gọi
 
     public void handleAccept(String payload, ClientHandler calleeClient) {
         var req = CallPayloads.fromJson(payload, CallPayloads.AcceptPayload.class);
@@ -148,14 +145,14 @@ public class CallService {
         session.state = CallSession.State.ACCEPTED;
         cancelTimeout(req.callId());
 
-        // Forward ACCEPT cho caller
+        // chuyển xác nhận đến người gọi
         serverManager.sendToClient(session.callerUsername,
                 new Packet(CallPacketTypes.ACCEPT, CallPayloads.toJson(req)));
 
         log(req.callId(), "ACCEPT by " + session.calleeUsername);
     }
 
-    // ── Handle CALL_ACCEPT_ACK ──────────────────────────────
+    // xử lý xác nhận kết nối cuộc gọi
 
     public void handleAcceptAck(String payload, ClientHandler callerClient) {
         var req = CallPayloads.fromJson(payload, CallPayloads.AckPayload.class);
@@ -169,20 +166,25 @@ public class CallService {
         session.state = CallSession.State.ACTIVE;
         session.connectedAt = Instant.now();
 
-        // Register với UDP relay cho NAT traversal
-        var relay = serverManager.getUdpRelayService();
-        if (relay != null) {
-            relay.registerCall(req.callId(), session.callerUsername, session.calleeUsername);
+        // đăng ký relay udp cho audio và video
+        var audioRelay = serverManager.getAudioRelayService();
+        if (audioRelay != null) {
+            audioRelay.registerCall(req.callId(), session.callerUsername, session.calleeUsername);
+        }
+        var videoRelay = serverManager.getVideoRelayService();
+        if (videoRelay != null) {
+            videoRelay.registerCall(req.callId(), session.callerUsername, session.calleeUsername);
         }
 
-        // Forward ACK cho callee
+        // chuyển ack đến người nhận
         serverManager.sendToClient(session.calleeUsername,
                 new Packet(CallPacketTypes.ACCEPT_ACK, CallPayloads.toJson(req)));
 
         log(req.callId(), "ACTIVE — connected");
     }
 
-    // ── Handle CALL_REJECT ──────────────────────────────────
+
+    // xử lý từ chối cuộc gọi
 
     public void handleReject(String payload, ClientHandler calleeClient) {
         var req = CallPayloads.fromJson(payload, CallPayloads.RejectPayload.class);
@@ -192,7 +194,7 @@ public class CallService {
         if (session == null) return;
         if (!session.calleeUsername.equals(calleeClient.getCurrentUsername())) return;
 
-        // Forward REJECT cho caller
+        // chuyển từ chối đến người gọi
         serverManager.sendToClient(session.callerUsername,
                 new Packet(CallPacketTypes.REJECT, CallPayloads.toJson(req)));
 
@@ -200,7 +202,7 @@ public class CallService {
         log(req.callId(), "REJECTED reason=" + req.reason());
     }
 
-    // ── Handle CALL_CANCEL ──────────────────────────────────
+    // xử lý hủy cuộc gọi
 
     public void handleCancel(String payload, ClientHandler callerClient) {
         var req = CallPayloads.fromJson(payload, CallPayloads.CallIdPayload.class);
@@ -210,7 +212,7 @@ public class CallService {
         if (session == null) return;
         if (!session.callerUsername.equals(callerClient.getCurrentUsername())) return;
 
-        // Forward CANCEL cho callee
+        // chuyển hủy đến người nhận
         serverManager.sendToClient(session.calleeUsername,
                 new Packet(CallPacketTypes.CANCEL, CallPayloads.toJson(req)));
 
@@ -218,7 +220,7 @@ public class CallService {
         log(req.callId(), "CANCELED by caller");
     }
 
-    // ── Handle CALL_END ─────────────────────────────────────
+    // xử lý kết thúc cuộc gọi
 
     public void handleEnd(String payload, ClientHandler client) {
         var req = CallPayloads.fromJson(payload, CallPayloads.CallIdPayload.class);
@@ -237,7 +239,7 @@ public class CallService {
             return;
         }
 
-        // Forward END cho bên còn lại
+        // chuyển kết thúc đến bên còn lại
         serverManager.sendToClient(otherUser,
                 new Packet(CallPacketTypes.END, CallPayloads.toJson(req)));
 
@@ -245,7 +247,7 @@ public class CallService {
         log(req.callId(), "ENDED by " + username);
     }
 
-    // ── Handle client disconnect ────────────────────────────
+    // xử lý client mất kết nối
 
     public void handleClientDisconnect(String username) {
         if (username == null) return;
@@ -267,7 +269,7 @@ public class CallService {
         log(callId, "DISCONNECT — " + username + " dropped");
     }
 
-    // ── Helpers ─────────────────────────────────────────────
+    // hàm hỗ trợ vòng đời cuộc gọi
 
     private void cleanup(String callId, String status) {
         CallSession session = activeCalls.remove(callId);
@@ -275,16 +277,21 @@ public class CallService {
             userToCallId.remove(session.callerUsername);
             userToCallId.remove(session.calleeUsername);
 
-            // Unregister từ UDP relay
-            var relay = serverManager.getUdpRelayService();
-            if (relay != null) {
-                relay.unregisterCall(callId);
+            // hủy đăng ký khỏi relay udp
+            var audioRelay = serverManager.getAudioRelayService();
+            if (audioRelay != null) {
+                audioRelay.unregisterCall(callId);
+            }
+            var videoRelay = serverManager.getVideoRelayService();
+            if (videoRelay != null) {
+                videoRelay.unregisterCall(callId);
             }
 
             saveCallLog(session, status);
         }
         cancelTimeout(callId);
     }
+
 
     private void cancelTimeout(String callId) {
         ScheduledFuture<?> future = ringingTimeouts.remove(callId);

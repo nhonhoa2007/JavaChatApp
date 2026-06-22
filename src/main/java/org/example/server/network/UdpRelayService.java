@@ -7,32 +7,34 @@ import java.net.SocketTimeoutException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// UDP Relay server — forward audio giữa 2 client qua internet.
-// Client gửi packet format: [8 bytes callId ASCII][payload audio]
-// Server dùng callId tra cứu cặp client, forward payload cho bên còn lại.
+// chuyển tiếp dữ liệu udp giữa hai client
+// client gửi gói gồm call id và payload
+// server dùng call id để tìm người nhận còn lại
 public class UdpRelayService {
 
-    private static final int RELAY_PORT = 8889;
+    private final int port;
     private static final int CALL_ID_LENGTH = 8;
-    private static final int MAX_PACKET_SIZE = 2048;
+    private final int maxPacketSize;
 
     private final DatagramSocket relaySocket;
     private final Thread relayThread;
     private volatile boolean running = true;
 
-    // callId → EndpointPair (2 địa chỉ UDP)
+    // ánh xạ call id với hai endpoint udp
     private final Map<String, EndpointPair> activeSessions = new ConcurrentHashMap<>();
 
-    public UdpRelayService() throws Exception {
-        relaySocket = new DatagramSocket(RELAY_PORT);
+    public UdpRelayService(int port, int maxPacketSize) throws Exception {
+        this.port = port;
+        this.maxPacketSize = maxPacketSize;
+        relaySocket = new DatagramSocket(port);
         relaySocket.setSoTimeout(500);
-        relayThread = new Thread(this::relayLoop, "udp-relay");
+        relayThread = new Thread(this::relayLoop, "udp-relay-" + port);
         relayThread.setDaemon(true);
     }
 
     public void start() {
         relayThread.start();
-        System.out.println("[UdpRelay] Started on port " + RELAY_PORT);
+        System.out.println("[UdpRelay] Started on port " + port);
     }
 
     public void stop() {
@@ -42,25 +44,26 @@ public class UdpRelayService {
         }
     }
 
-    // Đăng ký cuộc gọi ACTIVE để relay biết cần forward
+    // đăng ký cuộc gọi đang hoạt động để relay dữ liệu
     public void registerCall(String callId, String callerUsername, String calleeUsername) {
         activeSessions.put(callId, new EndpointPair(callerUsername, calleeUsername));
-        System.out.println("[UdpRelay] Registered callId=" + callId + " (" + callerUsername + " ↔ " + calleeUsername + ")");
+        System.out.println("[UdpRelay-" + port + "] Registered callId=" + callId + " (" + callerUsername + " ↔ " + calleeUsername + ")");
     }
 
-    // Xóa mapping khi cuộc gọi kết thúc
+    // xóa mapping khi cuộc gọi kết thúc
     public void unregisterCall(String callId) {
         activeSessions.remove(callId);
-        System.out.println("[UdpRelay] Unregistered callId=" + callId);
+        System.out.println("[UdpRelay-" + port + "] Unregistered callId=" + callId);
     }
 
     public int getRelayPort() {
-        return RELAY_PORT;
+        return port;
     }
 
     private void relayLoop() {
-        byte[] buffer = new byte[MAX_PACKET_SIZE];
+        byte[] buffer = new byte[maxPacketSize];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
 
         while (running) {
             try {
@@ -69,7 +72,7 @@ public class UdpRelayService {
                 int length = packet.getLength();
                 if (length <= CALL_ID_LENGTH) continue;
 
-                // Extract callId (8 bytes đầu)
+                // tách call id từ 8 byte đầu
                 String callId = new String(buffer, 0, CALL_ID_LENGTH);
 
                 EndpointPair pair = activeSessions.get(callId);
@@ -78,14 +81,14 @@ public class UdpRelayService {
                 InetAddress senderAddr = packet.getAddress();
                 int senderPort = packet.getPort();
 
-                // Ghi nhận address (lazy binding khi nhận packet đầu tiên)
+                // ghi nhận địa chỉ khi nhận gói đầu tiên
                 Endpoint sender = new Endpoint(senderAddr, senderPort);
                 boolean isCaller = pair.trySetCaller(sender);
                 boolean isCallee = !isCaller && pair.trySetCallee(sender);
 
                 if (!isCaller && !isCallee) continue;
 
-                // Forward payload (skip callId header) cho bên kia
+                // chuyển tiếp payload cho bên còn lại
                 Endpoint target = isCaller ? pair.getCalleeEndpoint() : pair.getCallerEndpoint();
                 if (target == null) continue;
 
@@ -98,7 +101,7 @@ public class UdpRelayService {
                 relaySocket.send(forward);
 
             } catch (SocketTimeoutException ste) {
-                // normal
+                // timeout bình thường
             } catch (Exception e) {
                 if (running) {
                     System.err.println("[UdpRelay] Error: " + e.getMessage());
@@ -122,7 +125,7 @@ public class UdpRelayService {
         }
     }
 
-    // Lưu 2 endpoint của 1 cuộc gọi. Address set khi nhận packet đầu tiên.
+    // lưu hai endpoint của một cuộc gọi
     private static class EndpointPair {
         final String callerUsername;
         final String calleeUsername;

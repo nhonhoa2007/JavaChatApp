@@ -6,15 +6,14 @@ import org.example.server.service.CallService;
 import org.example.server.service.ChatService;
 import org.example.server.service.FriendService;
 import org.example.server.service.MessageService;
-<<<<<<< HEAD
 import org.example.server.service.AdminService;
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 public class ClientHandler implements Runnable {
     private final Socket socket;
@@ -27,10 +26,7 @@ public class ClientHandler implements Runnable {
     private final MessageService messageService;
     private final FriendService friendService;
     private final CallService callService;
-<<<<<<< HEAD
     private final AdminService adminService;
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
     public ClientHandler(Socket socket, ServerManager serverManager) {
         this.socket = socket;
@@ -39,17 +35,14 @@ public class ClientHandler implements Runnable {
         this.messageService = new MessageService(serverManager);
         this.friendService = new FriendService(serverManager);
         this.callService = serverManager.getCallService();
-<<<<<<< HEAD
         this.adminService = new AdminService(serverManager);
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     }
 
     @Override
     public void run() {
         try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+            out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
 
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
@@ -73,17 +66,17 @@ public class ClientHandler implements Runnable {
                 
             case "LOGIN_REQUEST":
                 authService.handleLogin(packet.getPayload(), this);
-                // Không load friends ở đây — client sẽ tự gửi LOAD_FRIENDS_REQUEST
-                // khi ChatController đã initialize xong và sẵn sàng nhận response.
+                // để client tự tải bạn bè sau khi chatcontroller sẵn sàng
                 break;
 
-<<<<<<< HEAD
             case "GET_USER_INFO":
                 authService.handleGetUserInfo(this);
                 break;
 
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
+            case "UPDATE_PROFILE_REQUEST":
+                authService.handleUpdateProfile(packet.getPayload(), this);
+                break;
+
             case "LOAD_HISTORY_REQUEST":
                 chatService.handleLoadHistory(packet.getPayload(), this);
                 break;
@@ -144,13 +137,10 @@ public class ClientHandler implements Runnable {
                 friendService.handleLoadFriends(this);
                 break;
 
-<<<<<<< HEAD
             case "SEARCH_ALL_USERS_REQUEST":
                 friendService.handleSearchAllUsers(this);
                 break;
 
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
             case "BLOCK_USER_REQUEST":
                 friendService.handleBlockUser(packet.getPayload(), this);
                 break;
@@ -178,11 +168,10 @@ public class ClientHandler implements Runnable {
                 callService.handleEnd(packet.getPayload(), this);
                 break;
             case "CALL_BUSY":
-                // Client gửi BUSY khi nhận invite mà đang bận — server chỉ forward
+                // chuyển tiếp trạng thái bận của client
                 callService.handleReject(packet.getPayload(), this);
                 break;
 
-<<<<<<< HEAD
             case "ADMIN_GET_USERS":
                 adminService.handleGetUsers(this);
                 break;
@@ -199,8 +188,6 @@ public class ClientHandler implements Runnable {
                 adminService.handleToggleLock(packet.getPayload(), this);
                 break;
 
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
             case "LOGOUT_REQUEST":
                 disconnect();
                 break;
@@ -217,7 +204,7 @@ public class ClientHandler implements Runnable {
     }
 
     private void disconnect() {
-        // Cleanup cuộc gọi đang diễn ra TRƯỚC khi logout
+        // dọn cuộc gọi đang diễn ra trước khi logout
         if (currentUsername != null) {
             callService.handleClientDisconnect(currentUsername);
         }

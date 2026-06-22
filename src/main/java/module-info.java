@@ -1,6 +1,7 @@
 module org.example {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.media;
     requires com.google.gson;
     requires java.desktop;
     requires java.sql;
@@ -9,14 +10,13 @@ module org.example {
     requires jbcrypt;
     requires java.naming;
     requires org.controlsfx.controls;
+    requires webcam.capture;
+
     
-<<<<<<< HEAD
     opens org.example.client.controller to javafx.fxml, javafx.base;
-=======
-    opens org.example.client.controller to javafx.fxml;
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
     opens org.example.client.call to javafx.fxml;
     opens org.example.common.model to org.hibernate.orm.core;
+    opens org.example.common.util to org.hibernate.orm.core;
     opens org.example.common.network to com.google.gson;
     exports org.example.client.network;
     exports org.example.client;

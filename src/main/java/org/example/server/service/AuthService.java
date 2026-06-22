@@ -62,20 +62,17 @@ public class AuthService {
             User user = userDAO.findByUsername(username);
 
             if (user != null && PasswordUtil.checkPassword(plainPassword, user.getPasswordHash())) {
-<<<<<<< HEAD
                 if (user.isLocked()) {
                     client.sendPacket(new Packet("LOGIN_ERROR", "Tài khoản của bạn đã bị khóa bởi Admin!"));
                     return;
                 }
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                 client.setCurrentUsername(username);
                 userDAO.updateUserStatus(username, "ONLINE");
 
                 System.out.println("User logged in successfully: " + username);
                 client.sendPacket(new Packet("LOGIN_SUCCESS", "Login successful! Welcome " + user.getFullName()));
 
-                // Chỉ broadcast STATUS_UPDATE cho bạn bè — tránh O(n²) broadcast
+                // chỉ gửi cập nhật trạng thái cho bạn bè
                 Set<String> friendNames = getFriendUsernames(user);
                 serverManager.broadcastOnlineStatus(username, true, friendNames);
             } else {
@@ -90,7 +87,7 @@ public class AuthService {
     public void handleLogout(ClientHandler client) {
         String username = client.getCurrentUsername();
         if (username != null) {
-            // Broadcast chỉ tới bạn bè trước khi remove client
+            // gửi trạng thái offline cho bạn bè trước khi xóa client
             try {
                 User user = userDAO.findByUsername(username);
                 if (user != null) {
@@ -100,7 +97,7 @@ public class AuthService {
                     serverManager.broadcastOnlineStatus(username, false);
                 }
             } catch (Exception e) {
-                // Fallback: broadcast toàn bộ nếu không lấy được danh sách bạn bè
+                // gửi toàn bộ nếu không lấy được danh sách bạn bè
                 serverManager.broadcastOnlineStatus(username, false);
             }
             userDAO.updateUserStatus(username, "OFFLINE");
@@ -110,10 +107,8 @@ public class AuthService {
         }
     }
 
-    /**
-     * Lấy tập username bạn bè đã accepted của user.
-     * Dùng để chỉ broadcast status cho đúng người cần biết.
-     */
+    // lấy tập username bạn bè đã chấp nhận
+    // dùng để gửi trạng thái cho đúng người cần biết
     private Set<String> getFriendUsernames(User user) {
         List<Friendship> friendships = friendshipDAO.getAcceptedFriends(user);
         if (friendships == null || friendships.isEmpty()) return Set.of();
@@ -126,7 +121,6 @@ public class AuthService {
         }
         return names;
     }
-<<<<<<< HEAD
 
     public void handleGetUserInfo(ClientHandler client) {
         String username = client.getCurrentUsername();
@@ -136,11 +130,50 @@ public class AuthService {
                 JsonObject userInfo = new JsonObject();
                 userInfo.addProperty("username", user.getUsername());
                 userInfo.addProperty("fullName", user.getFullName());
+                userInfo.addProperty("avatar", user.getAvatar() != null ? user.getAvatar() : "");
                 userInfo.addProperty("role", user.getRole());
                 client.sendPacket(new Packet("USER_INFO", userInfo.toString()));
             }
         }
     }
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
+
+    public void handleUpdateProfile(String payload, ClientHandler client) {
+        String username = client.getCurrentUsername();
+        if (username != null) {
+            try {
+                JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+                String fullName = json.has("fullName") ? json.get("fullName").getAsString().trim() : null;
+                String avatar = json.has("avatar") ? json.get("avatar").getAsString().trim() : null;
+
+                User user = userDAO.findByUsername(username);
+                if (user != null) {
+                    if (fullName != null && !fullName.isEmpty()) {
+                        user.setFullName(fullName);
+                    }
+                    if (avatar != null) {
+                        user.setAvatar(avatar);
+                    }
+                    boolean success = userDAO.updateUser(user);
+
+                    JsonObject response = new JsonObject();
+                    if (success) {
+                        response.addProperty("status", "SUCCESS");
+                        response.addProperty("fullName", user.getFullName());
+                        response.addProperty("avatar", user.getAvatar() != null ? user.getAvatar() : "");
+                        response.addProperty("message", "Cập nhật hồ sơ thành công!");
+                    } else {
+                        response.addProperty("status", "ERROR");
+                        response.addProperty("message", "Lỗi khi cập nhật thông tin trong cơ sở dữ liệu.");
+                    }
+                    client.sendPacket(new Packet("UPDATE_PROFILE_RESPONSE", response.toString()));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                JsonObject errorResponse = new JsonObject();
+                errorResponse.addProperty("status", "ERROR");
+                errorResponse.addProperty("message", "Lỗi xử lý yêu cầu cập nhật hồ sơ: " + e.getMessage());
+                client.sendPacket(new Packet("UPDATE_PROFILE_RESPONSE", errorResponse.toString()));
+            }
+        }
+    }
 }

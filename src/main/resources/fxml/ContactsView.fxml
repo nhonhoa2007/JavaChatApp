@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="viewContacts" spacing="10.0" styleClass="utility-view" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ContactsViewController">
+    <Label styleClass="view-title" text="Danh bạ" />
+    <Label styleClass="section-label" text="Danh sách bạn bè" />
+    <ListView fx:id="listUsers" styleClass="panel-list" VBox.vgrow="ALWAYS" />
+    <Label styleClass="section-label" text="Lời mời kết bạn" />
+    <ListView fx:id="listRequests" editable="true" prefHeight="130.0" styleClass="panel-list" />
+</VBox>

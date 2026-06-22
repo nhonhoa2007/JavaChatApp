@@ -20,15 +20,15 @@ public class Friendship {
     @JoinColumn(name = "friend_id", nullable = false)
     private User friend;
 
-    // Status: PENDING, ACCEPTED
+    // trạng thái quan hệ bạn bè
     @Column(name = "status", length = 20, nullable = false)
     private String status;
 
-    // Lưu username của người đã thực hiện hành động chặn (nếu cả 2 chặn nhau thì lưu dạng "userA,userB")
+    // lưu username của người đã chặn
     @Column(name = "blocked_by", length = 150)
     private String blockedBy;
 
-    // Lưu username của người đã thực hiện tắt thông báo
+    // lưu username của người đã tắt thông báo
     @Column(name = "muted_by", length = 150)
     private String mutedBy;
 

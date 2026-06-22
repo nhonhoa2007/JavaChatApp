@@ -55,17 +55,17 @@ public class ChatService {
 
             List<Message> history = messageDAO.getPrivateHistory(currentUser, otherUser, limit);
 
-            // Batch load reactions
+            // tải reaction theo lô
             Map<Long, JsonArray> reactionBatch = Map.of();
             if (history != null && !history.isEmpty()) {
                 List<Long> ids = history.stream().map(Message::getId).toList();
                 reactionBatch = messageReactionDAO.getReactionSummaryBatch(ids);
             }
 
-            // Load call logs giữa 2 user
+            // tải lịch sử cuộc gọi giữa hai user
             List<CallLog> callLogs = callLogDAO.getCallHistoryBetween(currentUser, otherUser, limit);
 
-            // Merge messages + call logs theo thời gian
+            // gộp tin nhắn và cuộc gọi theo thời gian
             JsonArray messagesArray = new JsonArray();
             int mi = 0, ci = 0;
             List<Message> msgs = history != null ? history : List.of();
@@ -77,7 +77,7 @@ public class ChatService {
                 } else if (ci >= callLogs.size()) {
                     pickMessage = true;
                 } else {
-                    // So sánh thời gian: message sentAt vs callLog startedAt
+                    // so sánh thời gian gửi tin nhắn và bắt đầu cuộc gọi
                     pickMessage = msgs.get(mi).getSentAt().compareTo(callLogs.get(ci).getStartedAt()) <= 0;
                 }
 
@@ -116,7 +116,7 @@ public class ChatService {
 
             List<Message> history = messageDAO.getGroupHistory(groupChat, limit);
 
-            // Batch load reactions — 1 query thay vì N queries
+            // tải reaction bằng một query theo lô
             Map<Long, JsonArray> reactionBatch = Map.of();
             if (history != null && !history.isEmpty()) {
                 List<Long> ids = history.stream().map(Message::getId).toList();
@@ -218,7 +218,7 @@ public class ChatService {
                 return;
             }
 
-            // Batch count thay vì N query getMembers().size() trong loop
+            // đếm thành viên theo lô để tránh nhiều query
             List<Long> groupIds = groups.stream().map(GroupChat::getId).toList();
             Map<Long, Integer> memberCounts = groupMemberDAO.getMemberCountBatch(groupIds);
 
@@ -246,14 +246,14 @@ public class ChatService {
                 return;
             }
 
-            // Pre-load member counts cho tất cả groups liên quan — tránh N+1
+            // tải trước số thành viên nhóm để tránh n+1
             List<GroupChat> userGroups = groupDAO.getGroupsOfUser(currentUser);
             Map<Long, Integer> memberCounts = Map.of();
             if (userGroups != null && !userGroups.isEmpty()) {
                 List<Long> groupIds = userGroups.stream().map(GroupChat::getId).toList();
                 memberCounts = groupMemberDAO.getMemberCountBatch(groupIds);
             }
-            // Dùng effectively-final copy để dùng trong lambda/closure nếu cần
+            // tạo bản sao final để dùng trong lambda
             final Map<Long, Integer> memberCountsRef = memberCounts;
 
             Map<String, JsonObject> conversations = new LinkedHashMap<>();
@@ -266,14 +266,15 @@ public class ChatService {
                     conversations.putIfAbsent(key, toConversationJson(
                             key,
                             "PRIVATE",
-                            otherUser.getUsername(),
+                            displayName(otherUser),
                             previewMessage(message),
-                            message.getSentAt().toString()
+                            message.getSentAt().toString(),
+                            otherUser
                     ));
                 } else if (message.getGroupChat() != null) {
                     GroupChat groupChat = message.getGroupChat();
                     String key = "GROUP:" + groupChat.getId();
-                    // Dùng batch count thay vì query riêng per group
+                    // dùng kết quả đếm theo lô cho từng nhóm
                     int count = memberCountsRef.getOrDefault(groupChat.getId(), 0);
                     String title = groupChat.getName() + " (" + count + ")";
                     conversations.putIfAbsent(key, toConversationJson(
@@ -293,7 +294,7 @@ public class ChatService {
                             ? friendship.getFriend()
                             : friendship.getUser();
                     String key = "PRIVATE:" + friend.getUsername();
-                    conversations.putIfAbsent(key, toConversationJson(key, "PRIVATE", friend.getUsername(), "", ""));
+                    conversations.putIfAbsent(key, toConversationJson(key, "PRIVATE", displayName(friend), "", "", friend));
                 }
             }
 
@@ -371,26 +372,26 @@ public class ChatService {
 
             if (sender == null || receiver == null) return;
 
-            // Kiểm tra Block (Chặn)
+            // kiểm tra trạng thái chặn
             if (friendshipDAO.isBlocked(sender, receiver)) {
                 senderClient.sendPacket(new Packet("CHAT_ERROR", "Bạn đã bị người này chặn, không thể gửi tin nhắn."));
                 return;
             }
 
-            // Lưu tin nhắn vào DB
+            // lưu tin nhắn vào db
             Message message = new Message(sender, receiver, messageType, content);
             message.setFileName(filename);
             messageDAO.saveMessage(message);
 
-            // Kiểm tra Mute (Tắt thông báo)
+            // kiểm tra trạng thái tắt thông báo
             boolean isMuted = friendshipDAO.isMuted(sender, receiver);
 
-            // Gửi lại gói tin cho SENDER để họ có ID thực tế của tin nhắn (phục vụ Edit/Recall/Reaction)
+            // gửi ack cho người gửi với id tin nhắn thật
             JsonObject ackJson = toMessageJson(message, sender);
             ackJson.addProperty("receiver", receiver.getUsername());
             senderClient.sendPacket(new Packet("CHAT_ACK", ackJson.toString()));
 
-            // Tạo payload gửi cho RECEIVER
+            // tạo payload gửi cho người nhận
             JsonObject messageJson = toMessageJson(message, sender);
             messageJson.addProperty("sender", sender.getUsername());
             messageJson.addProperty("isMuted", isMuted);
@@ -421,7 +422,7 @@ public class ChatService {
     }
 
     private JsonObject toMessageJson(Message msg, User currentUser) {
-        // Fallback: query reactions cho 1 message (dùng khi gửi single message ACK/incoming)
+        // tải reaction cho một tin nhắn đơn lẻ
         return toMessageJson(msg, currentUser, messageReactionDAO.getReactionSummary(msg));
     }
 
@@ -429,6 +430,9 @@ public class ChatService {
         JsonObject msgObj = new JsonObject();
         msgObj.addProperty("id", msg.getId());
         msgObj.addProperty("sender", msg.getSender().getUsername().equals(currentUser.getUsername()) ? "Bạn" : msg.getSender().getUsername());
+        msgObj.addProperty("senderUsername", msg.getSender().getUsername());
+        msgObj.addProperty("senderDisplayName", displayName(msg.getSender()));
+        msgObj.addProperty("senderAvatar", safeAvatar(msg.getSender()));
 
         if (msg.isRecalled()) {
             msgObj.addProperty("content", "[Tin nhắn đã bị thu hồi]");
@@ -455,8 +459,17 @@ public class ChatService {
         obj.addProperty("key", key);
         obj.addProperty("type", type);
         obj.addProperty("title", title);
+        obj.addProperty("displayName", title);
+        obj.addProperty("avatar", "");
         obj.addProperty("preview", preview);
         obj.addProperty("timestamp", timestamp);
+        return obj;
+    }
+
+    private JsonObject toConversationJson(String key, String type, String title, String preview, String timestamp, User user) {
+        JsonObject obj = toConversationJson(key, type, title, preview, timestamp);
+        obj.addProperty("displayName", displayName(user));
+        obj.addProperty("avatar", safeAvatar(user));
         return obj;
     }
 
@@ -471,7 +484,7 @@ public class ChatService {
         obj.addProperty("status", log.getStatus());
         obj.addProperty("timestamp", log.getStartedAt().toString());
 
-        // Tạo content text dựa trên status
+        // tạo nội dung hiển thị theo trạng thái cuộc gọi
         String icon;
         String text;
         switch (log.getStatus()) {
@@ -516,8 +529,29 @@ public class ChatService {
         if ("VOICE".equals(type)) {
             return "[Voice]";
         }
+        if ("VIDEO".equals(type)) {
+            return "[Video]";
+        }
         String content = message.getContent();
         return content.length() > 80 ? content.substring(0, 80) + "..." : content;
+    }
+
+    private String displayName(User user) {
+        if (user == null) {
+            return "";
+        }
+        String fullName = user.getFullName();
+        if (fullName != null && !fullName.isBlank()) {
+            return fullName;
+        }
+        return user.getUsername();
+    }
+
+    private String safeAvatar(User user) {
+        if (user == null || user.getAvatar() == null) {
+            return "";
+        }
+        return user.getAvatar();
     }
 
     private void notifyGroupListUpdated(GroupChat groupChat) {

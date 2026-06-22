@@ -27,8 +27,53 @@
     -fx-fill: white;
 }
 
+.header-call-icon,
+.header-video-icon {
+    -fx-fill: white;
+}
+
 .composer-icon {
     -fx-fill: #22314a;
+}
+
+.composer-image-icon {
+    -fx-fill: #0ea5e9;
+}
+
+.composer-file-icon {
+    -fx-fill: #f59e0b;
+}
+
+.composer-voice-icon {
+    -fx-fill: #16a34a;
+}
+
+.composer-video-icon {
+    -fx-fill: #7c3aed;
+}
+
+.composer-stop-icon {
+    -fx-fill: white;
+}
+
+.media-icon-image {
+    -fx-text-fill: #0ea5e9;
+    -fx-font-weight: bold;
+}
+
+.media-icon-file {
+    -fx-text-fill: #f59e0b;
+    -fx-font-weight: bold;
+}
+
+.media-icon-voice {
+    -fx-text-fill: #16a34a;
+    -fx-font-weight: bold;
+}
+
+.media-icon-video {
+    -fx-text-fill: #7c3aed;
+    -fx-font-weight: bold;
 }
 
 .content-stack {
@@ -72,6 +117,29 @@
     -fx-background-radius: 8px;
     -fx-border-color: #e2e8f0;
     -fx-border-radius: 8px;
+}
+
+.avatar-circle {
+    -fx-background-color: linear-gradient(to bottom right, #2563eb, #06b6d4);
+    -fx-background-radius: 999px;
+    -fx-alignment: CENTER;
+}
+
+.avatar-initial {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.avatar-emoji {
+    -fx-background-color: #e2e8f0;
+    -fx-background-radius: 999px;
+    -fx-alignment: CENTER;
+    -fx-font-size: 16px;
+}
+
+.message-avatar {
+    -fx-opacity: 0.98;
 }
 
 .conversation-title {
@@ -129,6 +197,35 @@
 .message-list .list-cell {
     -fx-background-color: transparent;
     -fx-padding: 4 0 4 0;
+}
+
+.reaction-summary {
+    -fx-alignment: CENTER_LEFT;
+}
+
+.reaction-chip {
+    -fx-padding: 2 6 2 5;
+    -fx-background-color: white;
+    -fx-background-radius: 999px;
+    -fx-border-color: #dbe2ea;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+}
+
+.reaction-count {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #475569;
+}
+
+.reaction-emoji-fallback {
+    -fx-font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 14px;
+}
+
+.reaction-menu-graphic {
+    -fx-min-width: 30px;
+    -fx-pref-width: 30px;
 }
 
 .message-list .scroll-bar:vertical {
@@ -280,9 +377,8 @@
     -fx-background-color: #dbeafe;
     -fx-text-fill: #1e3a8a;
 }
-<<<<<<< HEAD
 
-/* Admin Dashboard Styles */
+/* kiểu giao diện dashboard admin */
 .admin-table {
     -fx-background-color: white;
     -fx-background-radius: 8px;
@@ -356,6 +452,3 @@
     -fx-border-width: 1px;
     -fx-min-height: 38px;
 }
-
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e

@@ -5,9 +5,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketTimeoutException;
 
-// Thread nhận audio từ UDP, đưa qua JitterBuffer, phát ra speaker.
-// 2 luồng bên trong: receiveThread (UDP → buffer) + playThread (buffer → speaker)
-// Format: PCM 16kHz, 16-bit, mono. Frame: 20ms = 640 bytes.
+// nhận âm thanh từ udp và phát ra loa
+// tách luồng nhận gói tin và luồng phát từ buffer
+// dùng định dạng pcm 16khz 16-bit mono
 public class AudioPlaybackThread extends Thread {
 
     private static final AudioFormat FORMAT = new AudioFormat(16000.0f, 16, 1, true, false);
@@ -20,7 +20,7 @@ public class AudioPlaybackThread extends Thread {
 
     private Thread receiveThread;
 
-    // Stats
+    // thống kê nhận gói
     private long packetsReceived;
     private int lastSeq = -1;
     private long packetsLost;
@@ -74,7 +74,7 @@ public class AudioPlaybackThread extends Thread {
         }
     }
 
-    // Receive loop — nhận UDP, extract seq, drop late, put vào jitter buffer
+    // vòng lặp nhận udp và đưa frame hợp lệ vào jitter buffer
     private void receiveLoop() {
         try {
             socket.setSoTimeout(200);
@@ -87,14 +87,14 @@ public class AudioPlaybackThread extends Thread {
                     int length = packet.getLength();
 
                     if (length >= 4 + FRAME_SIZE) {
-                        // Phase 4 format: 4 byte seq + 640 byte audio
+                        // định dạng có số thứ tự và dữ liệu âm thanh
                         int seq = ((buffer[0] & 0xFF) << 24)
                                 | ((buffer[1] & 0xFF) << 16)
                                 | ((buffer[2] & 0xFF) << 8)
                                 | (buffer[3] & 0xFF);
 
                         if (seq <= lastSeq) {
-                            continue; // late packet, drop
+                            continue; // bỏ gói đến muộn
                         }
 
                         if (lastSeq >= 0 && seq > lastSeq + 1) {
@@ -108,14 +108,14 @@ public class AudioPlaybackThread extends Thread {
                         jitterBuffer.put(audioFrame);
 
                     } else if (length == FRAME_SIZE) {
-                        // Phase 3 format (no seq) — backward compat
+                        // hỗ trợ định dạng cũ không có số thứ tự
                         byte[] audioFrame = new byte[FRAME_SIZE];
                         System.arraycopy(buffer, 0, audioFrame, 0, FRAME_SIZE);
                         jitterBuffer.put(audioFrame);
                         packetsReceived++;
                     }
                 } catch (SocketTimeoutException ste) {
-                    // normal timeout
+                    // timeout nhận gói bình thường
                 }
             }
         } catch (Exception e) {
@@ -139,7 +139,7 @@ public class AudioPlaybackThread extends Thread {
         return packetsLost;
     }
 
-    // Tỉ lệ mất gói (0.0 - 100.0)
+    // tính tỉ lệ mất gói
     public double getLossPercent() {
         long total = packetsReceived + packetsLost;
         if (total == 0) return 0.0;

@@ -5,14 +5,14 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-// Thread ghi mic và gửi audio frame qua UDP cho peer.
-// Format: PCM 16kHz, 16-bit, mono, signed, little-endian.
-// Frame size: 20ms = 640 bytes.
-// Packet format: [callId prefix (8 bytes, relay only)][4 bytes seq][640 bytes PCM]
+// ghi âm từ mic và gửi frame âm thanh qua udp
+// dùng định dạng pcm 16khz 16-bit mono
+// mỗi frame dài 20ms và có kích thước 640 byte
+// gói tin gồm tiền tố call id, số thứ tự và dữ liệu pcm
 public class AudioCaptureThread extends Thread {
 
     private static final AudioFormat FORMAT = new AudioFormat(16000.0f, 16, 1, true, false);
-    private static final int FRAME_SIZE = 640; // 20ms * 16000Hz * 2bytes
+    private static final int FRAME_SIZE = 640; // kích thước frame 20ms
 
     private final DatagramSocket socket;
     private final InetAddress peerAddress;
@@ -22,7 +22,7 @@ public class AudioCaptureThread extends Thread {
     private volatile boolean muted = false;
 
     private int sequenceNumber = 0;
-    private byte[] callIdPrefix = null; // null = P2P, non-null = relay mode
+    private byte[] callIdPrefix = null; // null là p2p, có giá trị là relay
 
     public AudioCaptureThread(DatagramSocket socket, InetAddress peerAddress, int peerPort) {
         super("audio-capture");
@@ -32,7 +32,7 @@ public class AudioCaptureThread extends Thread {
         this.peerPort = peerPort;
     }
 
-    // Enable relay mode — prepend 8 bytes callId trước mỗi packet
+    // bật relay bằng cách gắn call id vào đầu mỗi gói
     public void setRelayCallId(String callId) {
         if (callId != null && callId.length() >= 8) {
             this.callIdPrefix = callId.substring(0, 8).getBytes();
@@ -67,20 +67,20 @@ public class AudioCaptureThread extends Thread {
                 if (bytesRead == FRAME_SIZE && !muted) {
                     int offset = 0;
 
-                    // Relay prefix (8 bytes callId)
+                    // ghi tiền tố call id cho relay
                     if (callIdPrefix != null) {
                         System.arraycopy(callIdPrefix, 0, sendBuffer, 0, callIdPrefix.length);
                         offset = callIdPrefix.length;
                     }
 
-                    // Sequence number (4 bytes big-endian)
+                    // ghi số thứ tự gói tin
                     sendBuffer[offset]     = (byte) ((sequenceNumber >> 24) & 0xFF);
                     sendBuffer[offset + 1] = (byte) ((sequenceNumber >> 16) & 0xFF);
                     sendBuffer[offset + 2] = (byte) ((sequenceNumber >> 8) & 0xFF);
                     sendBuffer[offset + 3] = (byte) (sequenceNumber & 0xFF);
                     offset += 4;
 
-                    // Audio data
+                    // ghi dữ liệu âm thanh
                     System.arraycopy(audioBuffer, 0, sendBuffer, offset, FRAME_SIZE);
 
                     DatagramPacket packet = new DatagramPacket(sendBuffer, totalPacketSize, peerAddress, peerPort);

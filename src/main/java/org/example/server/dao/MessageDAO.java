@@ -56,8 +56,8 @@ public class MessageDAO {
 
     public List<Message> getPrivateHistory(User user1, User user2, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            // ORDER BY DESC + setMaxResults để lấy N tin GẦN NHẤT
-            // Sau đó reverse để hiển thị đúng thứ tự thời gian (cũ → mới)
+            // lấy n tin gần nhất theo thứ tự giảm dần
+            // đảo lại để hiển thị từ cũ đến mới
             String hql = "FROM Message m WHERE (m.sender = :u1 AND m.receiver = :u2) " +
                          "OR (m.sender = :u2 AND m.receiver = :u1) ORDER BY m.sentAt DESC";
             Query<Message> query = session.createQuery(hql, Message.class);
@@ -67,7 +67,7 @@ public class MessageDAO {
                 query.setMaxResults(limit);
             }
             List<Message> result = query.list();
-            Collections.reverse(result);  // đảo ngược → hiển thị cũ → mới
+            Collections.reverse(result);  // đảo lại để hiển thị từ cũ đến mới
             return result;
         } catch (Exception e) {
             e.printStackTrace();
@@ -77,7 +77,7 @@ public class MessageDAO {
 
     public List<Message> getGroupHistory(GroupChat groupChat, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            // ORDER BY DESC + setMaxResults để lấy N tin GẦN NHẤT, rồi reverse
+            // lấy n tin gần nhất rồi đảo lại thứ tự hiển thị
             String hql = "FROM Message m WHERE m.groupChat.id = :groupId ORDER BY m.sentAt DESC";
             Query<Message> query = session.createQuery(hql, Message.class);
             query.setParameter("groupId", groupChat.getId());

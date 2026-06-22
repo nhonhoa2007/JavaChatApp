@@ -13,59 +13,88 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>17.0.6</javafx.version>
+        <javafx.platform>win</javafx.platform>
         <hibernate.version>6.4.4.Final</hibernate.version>
     </properties>
 
 
     <dependencies>
-        <!-- JavaFX -->
+        <!-- thư viện javafx -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
 
 
 
-        <!-- ControlsFX for Push Notifications/Popups in JavaFX -->
+        <!-- thư viện controlsfx cho popup javafx -->
         <dependency>
             <groupId>org.controlsfx</groupId>
             <artifactId>controlsfx</artifactId>
             <version>11.1.2</version>
         </dependency>
 
-        <!-- Hibernate Core -->
+        <!-- thư viện hibernate core -->
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
             <version>${hibernate.version}</version>
         </dependency>
 
-        <!-- SQL Server JDBC -->
+        <!-- driver jdbc cho sql server -->
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
             <version>12.4.2.jre11</version>
         </dependency>
 
-        <!-- BCrypt for Password Hashing -->
+        <!-- thư viện bcrypt để băm mật khẩu -->
         <dependency>
             <groupId>org.mindrot</groupId>
             <artifactId>jbcrypt</artifactId>
             <version>0.4</version>
         </dependency>
 
-        <!-- JSON (Gson) for Packet Serialization -->
+        <!-- thư viện gson để tuần tự hóa packet -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
+
+        <!-- thư viện webcam cho cuộc gọi video -->
+        <dependency>
+            <groupId>com.github.sarxos</groupId>
+            <artifactId>webcam-capture</artifactId>
+            <version>0.3.12</version>
+        </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <release>17</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

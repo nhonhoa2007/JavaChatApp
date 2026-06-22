@@ -18,11 +18,7 @@ public class ClientApplication extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-<<<<<<< HEAD
 
-=======
-        // Khởi tạo và kết nối Socket tới Server
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
         chatClient = new ChatClient();
         boolean isConnected = chatClient.connect("localhost", 8888);
 
@@ -32,22 +28,14 @@ public class ClientApplication extends Application {
         }
         CallManager.init(chatClient);
 
-<<<<<<< HEAD
-        //load giao diện
-=======
-        // Tải giao diện Login (JavaFX FXML)
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
+        // tải giao diện chính
         Parent root = FXMLLoader.load(getClass().getResource("/fxml/Login.fxml"));
         
         primaryStage.setTitle("Java Chat - Login");
         primaryStage.setScene(new Scene(root, 400, 400));
         primaryStage.setResizable(false);
         
-<<<<<<< HEAD
 
-=======
-        // Đóng Socket khi người dùng tắt cửa sổ
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
         primaryStage.setOnCloseRequest(event -> {
             chatClient.disconnect();
             Platform.exit();

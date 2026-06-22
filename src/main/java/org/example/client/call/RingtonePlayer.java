@@ -4,7 +4,7 @@ import javax.sound.sampled.*;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
 
-// Phát ringtone khi có cuộc gọi đến. Singleton, loop WAV.
+// phát nhạc chuông lặp lại khi có cuộc gọi đến
 public class RingtonePlayer {
 
     private static final RingtonePlayer INSTANCE = new RingtonePlayer();
@@ -17,13 +17,13 @@ public class RingtonePlayer {
         return INSTANCE;
     }
 
-    // Phát ringtone loop. Nếu đang phát rồi thì bỏ qua.
+    // phát nhạc chuông nếu chưa phát
     public synchronized void start() {
         if (playing) return;
         try {
             InputStream is = getClass().getResourceAsStream("/audio/ringtone.wav");
             if (is == null) {
-                // Fallback beep nếu không có file
+                // phát tiếng beep nếu không có file
                 System.out.println("[RingtonePlayer] ringtone.wav not found, using system beep");
                 playing = true;
                 new Thread(() -> {
@@ -46,7 +46,7 @@ public class RingtonePlayer {
         }
     }
 
-    // Dừng ringtone
+    // dừng nhạc chuông
     public synchronized void stop() {
         playing = false;
         if (clip != null) {

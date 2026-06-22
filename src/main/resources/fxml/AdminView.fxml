@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="viewAdmin" spacing="10.0" styleClass="utility-view" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.AdminViewController">
+    <Label styleClass="view-title" text="Quản lý tài khoản (Admin)" />
+    <Label styleClass="muted-label" text="Xem thông tin, chỉnh sửa, khóa hoặc tạo tài khoản mới" />
+    <HBox spacing="15.0" VBox.vgrow="ALWAYS">
+        <!-- vùng trái gồm tìm kiếm và bảng -->
+        <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                <TextField fx:id="txtAdminSearch" promptText="Tìm theo tài khoản/họ tên..." HBox.hgrow="ALWAYS" styleClass="app-input" />
+                <Button onAction="#handleAdminSearch" text="Tìm kiếm" styleClass="group-button" />
+            </HBox>
+            <TableView fx:id="tblUsers" VBox.vgrow="ALWAYS" styleClass="admin-table">
+                <columns>
+                    <TableColumn fx:id="colUsername" text="Tài khoản" prefWidth="100.0" />
+                    <TableColumn fx:id="colFullName" text="Họ tên" prefWidth="130.0" />
+                    <TableColumn fx:id="colRole" text="Vai trò" prefWidth="70.0" />
+                    <TableColumn fx:id="colStatus" text="Trạng thái" prefWidth="80.0" />
+                    <TableColumn fx:id="colLocked" text="Bị khóa" prefWidth="70.0" />
+                </columns>
+            </TableView>
+        </VBox>
+
+        <!-- vùng phải gồm form chi tiết -->
+        <VBox prefWidth="280.0" spacing="10.0" styleClass="admin-details-pane" alignment="TOP_CENTER">
+            <Label text="Chi tiết tài khoản" styleClass="section-label" />
+            <VBox spacing="4.0" alignment="CENTER_LEFT">
+                <Label text="Tên tài khoản:" styleClass="form-label" />
+                <TextField fx:id="txtAdminUsername" editable="false" styleClass="app-input, app-input-disabled" />
+            </VBox>
+            <VBox spacing="4.0" alignment="CENTER_LEFT">
+                <Label text="Họ và tên:" styleClass="form-label" />
+                <TextField fx:id="txtAdminFullName" styleClass="app-input" />
+            </VBox>
+            <VBox spacing="4.0" alignment="CENTER_LEFT">
+                <Label text="Vai trò:" styleClass="form-label" />
+                <ComboBox fx:id="cmbAdminRole" prefWidth="280.0" styleClass="app-combobox" />
+            </VBox>
+            <VBox spacing="4.0" alignment="CENTER_LEFT">
+                <Label text="Mật khẩu mới (Tạo/Đặt lại):" styleClass="form-label" />
+                <PasswordField fx:id="txtAdminNewPassword" promptText="Nhập mật khẩu..." styleClass="app-input" />
+            </VBox>
+            <Separator />
+            <HBox spacing="6.0" alignment="CENTER">
+                <Button fx:id="btnAdminSave" onAction="#handleAdminSaveUser" text="Lưu" styleClass="group-button" prefWidth="70.0" />
+                <Button fx:id="btnAdminToggleLock" onAction="#handleAdminToggleLock" text="Khóa" styleClass="warning-button" prefWidth="70.0" />
+                <Button fx:id="btnAdminResetPw" onAction="#handleAdminResetPassword" text="Đặt lại MK" styleClass="danger-button" prefWidth="100.0" />
+            </HBox>
+            <Separator />
+            <Button onAction="#handleAdminOpenCreateForm" text="Tạo tài khoản mới" styleClass="warning-button" prefWidth="250.0" />
+        </VBox>
+    </HBox>
+</VBox>

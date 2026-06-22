@@ -100,7 +100,7 @@ public class VoiceRecorder {
                 }
             }
         } catch (Exception ex) {
-            // Ignore write errors during shutdown.
+            // bỏ qua lỗi ghi khi đang tắt recorder
         }
     }
 }

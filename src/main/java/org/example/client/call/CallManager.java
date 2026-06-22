@@ -35,7 +35,7 @@ public class CallManager {
 
     private CallManager(ChatClient chatClient) {
         this.chatClient = chatClient;
-        //chatClient.addListener(this::handlePacket);
+        // đăng ký listener khi cần xử lý packet trực tiếp
     }
 
     public synchronized void setMyUsername(String myUsername) {
@@ -68,7 +68,7 @@ public class CallManager {
             System.out.println("Peer username không hợp lệ");
             return;
         }
-        //API người gọi
+        // xử lý api của người gọi
         String callId = UUID.randomUUID().toString().substring(0, 8);
 
         currentSession = new CallSession();
@@ -101,7 +101,7 @@ public class CallManager {
 
     }
 
-    //API ng nhận
+    // xử lý api của người nhận
     public synchronized void acceptCall() {
         if (currentSession == null) return;
         if (currentSession.state != CallSession.State.RINGING_INCOMING) {
@@ -143,7 +143,7 @@ public class CallManager {
         cleanup(reason);
     }
 
-    //API chung
+    // xử lý api chung của cuộc gọi
     public synchronized void endCall() {
         if (currentSession == null) return;
         if (currentSession.state == CallSession.State.ENDED) return;
@@ -158,6 +158,14 @@ public class CallManager {
         }
         System.out.println("[CallManager] setMuted=" + muted);
     }
+
+    public synchronized void setVideoMuted(boolean videoMuted) {
+        if (currentSession != null && currentSession.videoCaptureThread != null) {
+            currentSession.videoCaptureThread.setVideoMuted(videoMuted);
+        }
+        System.out.println("[CallManager] setVideoMuted=" + videoMuted);
+    }
+
 
     public void handlePacket(Packet packet) {
         if (packet == null || packet.getType() == null) return;
@@ -225,6 +233,7 @@ public class CallManager {
         System.out.println("call ACTIVE (caller) peer=" + payload.ip() + ":" + payload.port());
 
         startAudioThreads();
+        startVideoThreads();
         fireCallActive(currentSession);
     }
     public synchronized void onAckReceived(String json) {
@@ -240,6 +249,7 @@ public class CallManager {
         System.out.println("call ACTIVE (callee) peer=" + payload.ip() + ":" + payload.port());
 
         startAudioThreads();
+        startVideoThreads();
         fireCallActive(currentSession);
     }
     public synchronized void onRejectReceived(String json) {
@@ -274,9 +284,9 @@ public class CallManager {
         cleanup(reason);
     }
 
-    // ── Audio management ──────────────────────────────────
+    // quản lý âm thanh cuộc gọi
 
-    /** Server hostname — dùng cho relay mode. Lấy từ kết nối TCP hiện tại. */
+    // cổng relay âm thanh trên server
     private static final int RELAY_PORT = 8889;
 
     private void startAudioThreads() {
@@ -285,9 +295,8 @@ public class CallManager {
             return;
         }
         try {
-            // Relay mode: gửi audio đến server:8889 thay vì peer trực tiếp
-            // Server relay sẽ forward cho peer
-            // Lấy server IP từ TCP socket đang kết nối
+            // gửi âm thanh đến relay server thay vì peer trực tiếp
+            // lấy ip server từ kết nối tcp hiện tại
             InetAddress serverAddr = InetAddress.getByName(
                     chatClient.getServerHost() != null ? chatClient.getServerHost() : "localhost"
             );
@@ -295,7 +304,7 @@ public class CallManager {
             currentSession.captureThread = new AudioCaptureThread(
                     currentSession.udpSocket, serverAddr, RELAY_PORT
             );
-            // Set relay callId prefix — server cần biết forward cho ai
+            // gắn call id để server biết cần chuyển tiếp cho ai
             currentSession.captureThread.setRelayCallId(currentSession.callId);
 
             currentSession.playbackThread = new AudioPlaybackThread(currentSession.udpSocket);
@@ -303,7 +312,7 @@ public class CallManager {
             currentSession.captureThread.start();
             currentSession.playbackThread.start();
 
-            // Start heartbeat monitor
+            // bắt đầu theo dõi heartbeat
             startHeartbeatMonitor();
 
             System.out.println("[CallManager] Audio threads started (relay mode → server:" + RELAY_PORT + ")");
@@ -312,13 +321,45 @@ public class CallManager {
         }
     }
 
+    private static final int RELAY_VIDEO_PORT = 8890;
+
+    private void startVideoThreads() {
+        if (currentSession == null) return;
+        if (!org.example.common.network.CallPacketTypes.TYPE_VIDEO.equals(currentSession.type)) return;
+
+        try {
+            java.net.DatagramSocket videoSocket = new java.net.DatagramSocket(0);
+            currentSession.videoUdpSocket = videoSocket;
+            currentSession.localVideoUdpPort = videoSocket.getLocalPort();
+
+            InetAddress serverAddr = InetAddress.getByName(
+                    chatClient.getServerHost() != null ? chatClient.getServerHost() : "localhost"
+            );
+
+            currentSession.videoCaptureThread = new VideoCaptureThread(
+                    currentSession.videoUdpSocket, serverAddr, RELAY_VIDEO_PORT, myUsername
+            );
+            currentSession.videoCaptureThread.setRelayCallId(currentSession.callId);
+
+            currentSession.videoPlaybackThread = new VideoPlaybackThread(currentSession.videoUdpSocket);
+
+            currentSession.videoCaptureThread.start();
+            currentSession.videoPlaybackThread.start();
+
+            System.out.println("[CallManager] Video threads started (relay mode → server:" + RELAY_VIDEO_PORT + ")");
+        } catch (Exception e) {
+            System.err.println("[CallManager] Failed to start video: " + e.getMessage());
+        }
+    }
+
+
     private Thread heartbeatThread;
 
     private void startHeartbeatMonitor() {
         heartbeatThread = new Thread(() -> {
             long lastCheck = 0;
             try {
-                // Đợi 3 giây cho cuộc gọi ổn định trước khi bắt đầu monitor
+                // đợi cuộc gọi ổn định trước khi theo dõi
                 Thread.sleep(3000);
 
                 while (currentSession != null && currentSession.state == CallSession.State.ACTIVE) {
@@ -328,13 +369,12 @@ public class CallManager {
 
                     long received = currentSession.playbackThread.getPacketsReceived();
                     if (received == lastCheck) {
-                        // Không nhận packet mới trong 1 giây — có thể peer mất mạng
-                        // Đợi thêm 4 giây nữa
+                        // kiểm tra thêm khi không nhận gói mới
                         Thread.sleep(4000);
                         if (currentSession == null || currentSession.playbackThread == null) break;
                         long receivedAfterWait = currentSession.playbackThread.getPacketsReceived();
                         if (receivedAfterWait == received) {
-                            // 5 giây không nhận gì — auto end
+                            // tự kết thúc khi mất gói quá lâu
                             System.out.println("[CallManager] Heartbeat timeout — peer lost connection");
                             endCall();
                             break;
@@ -345,7 +385,7 @@ public class CallManager {
                             : 0;
                 }
             } catch (InterruptedException e) {
-                // shutdown
+                // dừng theo dõi
             }
         }, "call-heartbeat");
         heartbeatThread.setDaemon(true);
@@ -358,13 +398,13 @@ public class CallManager {
 
         ended.state = CallSession.State.ENDED;
 
-        // Stop heartbeat monitor
+        // dừng heartbeat monitor
         if (heartbeatThread != null) {
             heartbeatThread.interrupt();
             heartbeatThread = null;
         }
 
-        // Stop audio threads
+        // dừng luồng âm thanh
         if (ended.captureThread != null) {
             ended.captureThread.shutdown();
             ended.captureThread = null;
@@ -374,8 +414,23 @@ public class CallManager {
             ended.playbackThread = null;
         }
 
-        // Close UDP socket
+        // đóng socket udp
         if(ended.udpSocket!=null&&!ended.udpSocket.isClosed()) ended.udpSocket.close();
+
+        // dừng luồng video
+        if (ended.videoCaptureThread != null) {
+            ended.videoCaptureThread.shutdown();
+            ended.videoCaptureThread = null;
+        }
+        if (ended.videoPlaybackThread != null) {
+            ended.videoPlaybackThread.shutdown();
+            ended.videoPlaybackThread = null;
+        }
+
+        // đóng socket udp video
+        if (ended.videoUdpSocket != null && !ended.videoUdpSocket.isClosed()) {
+            ended.videoUdpSocket.close();
+        }
 
         currentSession = null;
 

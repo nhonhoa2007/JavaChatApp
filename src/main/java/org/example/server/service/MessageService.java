@@ -34,13 +34,13 @@ public class MessageService {
 
             Message message = messageDAO.findById(messageId);
             
-            // Check if message exists and belongs to the sender
+            // kiểm tra tin nhắn tồn tại và thuộc người gửi
             if (message != null && message.getSender().getUsername().equals(senderClient.getCurrentUsername())) {
                 message.setRecalled(true);
                 message.setUpdatedAt(LocalDateTime.now());
                 messageDAO.updateMessage(message);
 
-                // Notify receiver to hide the message
+                // thông báo người nhận ẩn tin nhắn
                 JsonObject recallJson = new JsonObject();
                 recallJson.addProperty("messageId", messageId);
                 Packet recallPacket = new Packet("MESSAGE_RECALLED", recallJson.toString());
@@ -64,14 +64,14 @@ public class MessageService {
 
             Message message = messageDAO.findById(messageId);
 
-            // Check if message exists, belongs to the sender, and is not recalled
+            // kiểm tra tin nhắn hợp lệ để chỉnh sửa
             if (message != null && !message.isRecalled() && message.getSender().getUsername().equals(senderClient.getCurrentUsername())) {
                 message.setContent(newContent);
                 message.setEdited(true);
                 message.setUpdatedAt(LocalDateTime.now());
                 messageDAO.updateMessage(message);
 
-                // Notify receiver to update the message UI
+                // thông báo người nhận cập nhật giao diện tin nhắn
                 JsonObject editJson = new JsonObject();
                 editJson.addProperty("messageId", messageId);
                 editJson.addProperty("newContent", newContent);

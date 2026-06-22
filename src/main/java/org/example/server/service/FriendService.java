@@ -14,11 +14,8 @@ import org.example.server.network.ServerManager;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-<<<<<<< HEAD
 import java.util.Map;
 import java.util.HashMap;
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 
 public class FriendService {
     private final ServerManager serverManager;
@@ -37,7 +34,7 @@ public class FriendService {
             List<Friendship> friends = friendshipDAO.getAcceptedFriends(user);
             List<Friendship> pendingRequests = friendshipDAO.getPendingRequests(user);
 
-            // Build Set username đang online 1 lần duy nhất — tránh O(n×m) loop
+            // tạo tập username đang online để tra cứu nhanh
             Set<String> onlineUsernames = new HashSet<>();
             for (org.example.server.network.ClientHandler ch : serverManager.getActiveClients()) {
                 if (ch.getCurrentUsername() != null) {
@@ -56,7 +53,7 @@ public class FriendService {
 
                     JsonObject friendObj = new JsonObject();
                     friendObj.addProperty("username", friendUser.getUsername());
-                    // O(1) lookup thay vì loop O(m)
+                    // tra cứu trạng thái online trong o(1)
                     friendObj.addProperty("status", onlineUsernames.contains(friendUser.getUsername()) ? "ONLINE" : "OFFLINE");
 
                     boolean amIBlocking = blockedBy != null && blockedBy.contains(user.getUsername());
@@ -133,7 +130,7 @@ public class FriendService {
                 request.setStatus("ACCEPTED");
                 friendshipDAO.updateFriendship(request);
 
-                // Reload cho cả hai phía trực tiếp
+                // tải lại danh sách bạn bè cho cả hai phía
                 handleLoadFriends(receiverClient);
                 ClientHandler senderHandler = serverManager.getClientHandler(senderUsername);
                 if (senderHandler != null) {
@@ -162,12 +159,12 @@ public class FriendService {
                 boolean isCurrentlyBlocked = blockedBy != null && blockedBy.contains(myUsername);
 
                 if (isCurrentlyBlocked) {
-                    // Mở chặn
+                    // mở chặn người dùng
                     blockedBy = blockedBy.replace(myUsername, "").replace(",,", ",").replaceAll("^,|,$", "");
                     if (blockedBy.isEmpty()) blockedBy = null;
                     client.sendPacket(new Packet("BLOCK_SUCCESS", "Đã BỎ CHẶN người dùng " + targetUsername));
                 } else {
-                    // Chặn
+                    // chặn người dùng
                     if (blockedBy == null || blockedBy.isEmpty()) {
                         blockedBy = myUsername;
                     } else {
@@ -176,16 +173,14 @@ public class FriendService {
                     client.sendPacket(new Packet("BLOCK_SUCCESS", "Đã CHẶN người dùng " + targetUsername + ". Họ sẽ không thể nhắn tin cho bạn."));
                 }
 
-                // Cập nhật DB
+                // cập nhật trạng thái chặn trong db
                 friendshipDAO.updateBlockStatus(user, target, blockedBy);
 
-                // Reload danh sách bạn bè cho NGƯỜI THỰC HIỆN CHẶN/BỎ CHẶN
+                // tải lại danh sách bạn bè cho người thao tác
                 handleLoadFriends(client);
 
-                // Push trực tiếp danh sách bạn bè mới cho TARGET nếu họ đang online.
-                // Dùng getClientHandler + handleLoadFriends thay vì RELOAD_FRIENDS để tránh
-                // race condition: client gửi LOAD_FRIENDS_REQUEST ngay sau khi nhận RELOAD_FRIENDS,
-                // server có thể chưa commit xong DB update ở thời điểm đó.
+                // đẩy trực tiếp danh sách mới cho target nếu đang online
+                // gọi handleloadfriends sau khi cập nhật db để tránh race condition
                 ClientHandler targetHandler = serverManager.getClientHandler(target.getUsername());
                 if (targetHandler != null) {
                     handleLoadFriends(targetHandler);
@@ -213,12 +208,12 @@ public class FriendService {
                 boolean isCurrentlyMuted = mutedBy != null && mutedBy.contains(myUsername);
 
                 if (isCurrentlyMuted) {
-                    // Bật lại TB
+                    // bật lại thông báo
                     mutedBy = mutedBy.replace(myUsername, "").replace(",,", ",").replaceAll("^,|,$", "");
                     if (mutedBy.isEmpty()) mutedBy = null;
                     client.sendPacket(new Packet("MUTE_SUCCESS", "Đã BẬT LẠI thông báo từ " + targetUsername));
                 } else {
-                    // Tắt TB
+                    // tắt thông báo
                     if (mutedBy == null || mutedBy.isEmpty()) {
                         mutedBy = myUsername;
                     } else {
@@ -227,7 +222,7 @@ public class FriendService {
                     client.sendPacket(new Packet("MUTE_SUCCESS", "Đã TẮT thông báo từ " + targetUsername));
                 }
 
-                // Sử dụng hàm HQL thay vì merge
+                // cập nhật bằng hql để tránh merge entity
                 friendshipDAO.updateMuteStatus(user, target, mutedBy);
 
                 handleLoadFriends(client);
@@ -236,7 +231,6 @@ public class FriendService {
             e.printStackTrace();
         }
     }
-<<<<<<< HEAD
 
     public void handleSearchAllUsers(ClientHandler client) {
         try {
@@ -246,7 +240,7 @@ public class FriendService {
             List<User> allUsers = userDAO.findAllUsers();
             List<Friendship> friendships = friendshipDAO.getAllFriendships(currentUser);
             
-            // Build a map of username -> Friendship for O(1) lookup
+            // tạo map friendship theo username để tra cứu nhanh
             Map<String, Friendship> friendshipMap = new HashMap<>();
             for (Friendship f : friendships) {
                 String other = f.getUser().getUsername().equals(currentUser.getUsername()) 
@@ -255,7 +249,7 @@ public class FriendService {
                 friendshipMap.put(other, f);
             }
 
-            // Get active clients to check online status
+            // lấy danh sách client đang online
             Set<String> onlineUsernames = new HashSet<>();
             for (ClientHandler ch : serverManager.getActiveClients()) {
                 if (ch.getCurrentUsername() != null) {
@@ -268,7 +262,7 @@ public class FriendService {
 
             for (User u : allUsers) {
                 if (u.getUsername().equals(currentUser.getUsername())) {
-                    continue; // Skip self
+                    continue; // bỏ qua chính mình
                 }
 
                 JsonObject userObj = new JsonObject();
@@ -298,6 +292,4 @@ public class FriendService {
             e.printStackTrace();
         }
     }
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 }

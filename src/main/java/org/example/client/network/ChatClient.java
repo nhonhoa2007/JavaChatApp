@@ -4,8 +4,10 @@ import org.example.common.network.Packet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -16,14 +18,14 @@ public class ChatClient {
     private BufferedReader in;
     private Thread listenerThread;
     private final List<Consumer<Packet>> listeners = new ArrayList<>();
-    private String serverHost; // lưu host để relay biết server IP
+    private String serverHost; // lưu host server cho relay
 
     public boolean connect(String host, int port) {
         try {
             this.serverHost = host;
             socket = new Socket(host, port);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
 
             listenerThread = new Thread(this::listenForPackets);
             listenerThread.setDaemon(true);

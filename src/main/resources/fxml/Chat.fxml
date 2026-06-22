@@ -2,149 +2,43 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.SVGPath?>
+
 <BorderPane prefHeight="550.0" prefWidth="800.0" styleClass="chat-root" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ChatController">
     <left>
         <VBox prefWidth="64.0" spacing="12.0" styleClass="side-nav">
-<<<<<<< HEAD
             <Button fx:id="btnNavSearch" onAction="#handleShowSearchView" styleClass="nav-button" text="🔍" />
             <Button fx:id="btnNavChat" onAction="#handleShowChatView" styleClass="nav-button" text="💬" />
             <Button fx:id="btnNavContacts" onAction="#handleShowContactsView" styleClass="nav-button" text="👥" />
             <Button fx:id="btnNavGroups" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button">
-=======
-            <Button onAction="#handleShowSearchView" styleClass="nav-button" text="🔍" />
-            <Button onAction="#handleShowChatView" styleClass="nav-button" text="💬" />
-            <Button onAction="#handleShowContactsView" styleClass="nav-button" text="👥" />
-            <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button">
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
                 <graphic>
                     <SVGPath scaleX="1.45" scaleY="1.45" styleClass="group-nav-icon" content="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zM11 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
                 </graphic>
             </Button>
-<<<<<<< HEAD
+            <Button fx:id="btnNavProfile" onAction="#handleShowProfileView" styleClass="nav-button" text="👤" />
             <Button fx:id="btnAdmin" onAction="#handleShowAdminView" styleClass="nav-button" text="🛠" visible="false" managed="false" />
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
+            <Region VBox.vgrow="ALWAYS" />
+            <Button fx:id="btnNavLogout" onAction="#handleLogout" styleClass="nav-button" text="🚪" style="-fx-text-fill: #ef4444;" />
         </VBox>
     </left>
     <center>
         <StackPane fx:id="contentStack" styleClass="content-stack">
-            <VBox fx:id="viewSearch" spacing="12.0" styleClass="utility-view">
-                <Label styleClass="view-title" text="Tìm kiếm và thêm bạn bè" />
-<<<<<<< HEAD
-                <TextField fx:id="txtSearchFriend" promptText="Tìm kiếm bạn bè..." styleClass="app-input" />
-                <Label styleClass="section-label" text="Kết quả tìm kiếm bạn bè:" />
-                <ListView fx:id="listSearchResults" styleClass="panel-list" VBox.vgrow="ALWAYS" />
-=======
-                <TextField fx:id="txtSearchFriend" promptText="Tìm theo username trong danh bạ..." styleClass="app-input" />
-                <HBox spacing="10.0">
-                    <TextField fx:id="txtAddFriend" promptText="Nhập username muốn kết bạn..." styleClass="app-input" HBox.hgrow="ALWAYS" />
-                    <Button onAction="#handleAddFriend" styleClass="primary-button" text="Thêm" />
-                </HBox>
-                <Label styleClass="muted-label" text="Kết quả tìm kiếm áp dụng trên danh sách ở mục Danh bạ." />
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
-            </VBox>
-            <VBox fx:id="viewChat" managed="false" spacing="0.0" visible="false">
-                <StackPane styleClass="chat-workspace" VBox.vgrow="ALWAYS">
-                    <VBox fx:id="viewRecentConversations" spacing="10.0" styleClass="conversation-overview">
-                        <Label styleClass="view-title" text="Tin nhắn" />
-                        <Label styleClass="muted-label" text="Hội thoại cá nhân và nhóm" />
-                        <ListView fx:id="listRecentConversations" styleClass="conversation-list" VBox.vgrow="ALWAYS" />
-                    </VBox>
-                    <VBox fx:id="viewChatMessages" managed="false" spacing="0.0" visible="false">
-                        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="chat-header">
-                            <Label fx:id="lblChatTitle" styleClass="chat-title" text="Chọn hội thoại để xem lịch sử chat" />
-                            <Region HBox.hgrow="ALWAYS" />
-                            <Button fx:id="btnCall" onAction="#handleCallUser" styleClass="nav-button" text="📞" visible="false" />
-                            <Button fx:id="btnBlock" onAction="#handleBlockUser" styleClass="danger-button" text="Chặn" visible="false" />
-                            <Button fx:id="btnMute" onAction="#handleMuteUser" styleClass="warning-button" text="Tắt TB" visible="false" />
-                        </HBox>
-                        <ListView fx:id="listMessages" styleClass="message-list" VBox.vgrow="ALWAYS" />
-                        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="composer">
-                            <Button onAction="#handleSendImage" styleClass="icon-button" text="📷" />
-                            <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleSendFile" styleClass="icon-button">
-                                <graphic>
-                                    <SVGPath scaleX="1.35" scaleY="1.35" styleClass="composer-icon" content="M16.5 6.5 7.8 15.2a3 3 0 1 0 4.24 4.24l8.49-8.49a5 5 0 0 0-7.07-7.07L4.97 12.37a7 7 0 1 0 9.9 9.9l8.49-8.49-1.41-1.41-8.49 8.49a5 5 0 1 1-7.07-7.07l8.49-8.49a3 3 0 1 1 4.24 4.24l-8.49 8.49a1 1 0 1 1-1.41-1.41l8.7-8.7-1.42-1.42z" />
-                                </graphic>
-                            </Button>
-                            <Button fx:id="btnVoice" onAction="#handleSendVoice" styleClass="icon-button" text="🎤" />
-                            <TextArea fx:id="txtMessage" maxHeight="52.0" minHeight="52.0" prefHeight="52.0" prefRowCount="1" promptText="Nhập tin nhắn..." styleClass="message-input" HBox.hgrow="ALWAYS" />
-                            <Button contentDisplay="GRAPHIC_ONLY" minHeight="52.0" minWidth="56.0" onAction="#handleSendMessage" prefHeight="52.0" prefWidth="56.0" styleClass="send-button">
-                                <graphic>
-                                    <SVGPath scaleX="1.25" scaleY="1.25" styleClass="send-icon" content="M2 21 23 12 2 3v7l15 2-15 2v7z" />
-                                </graphic>
-                            </Button>
-                        </HBox>
-                    </VBox>
-                </StackPane>
-            </VBox>
-            <VBox fx:id="viewContacts" managed="false" spacing="10.0" styleClass="utility-view" visible="false">
-                <Label styleClass="view-title" text="Danh bạ" />
-                <Label styleClass="section-label" text="Danh sách bạn bè" />
-                <ListView fx:id="listUsers" styleClass="panel-list" VBox.vgrow="ALWAYS" />
-                <Label styleClass="section-label" text="Lời mời kết bạn" />
-                <ListView fx:id="listRequests" editable="true" prefHeight="130.0" styleClass="panel-list" />
-            </VBox>
-            <VBox fx:id="viewGroups" managed="false" spacing="10.0" styleClass="utility-view" visible="false">
-                <Label styleClass="view-title" text="Group chat" />
-                <Label styleClass="section-label" text="Danh sách nhóm" />
-                <ListView fx:id="listGroups" styleClass="panel-list" VBox.vgrow="ALWAYS" />
-                <Label styleClass="section-label" text="Tạo nhóm (&gt;= 3 người)" />
-                <Button onAction="#handleCreateGroup" styleClass="group-button" text="Tạo nhóm" />
-            </VBox>
-<<<<<<< HEAD
-            <VBox fx:id="viewAdmin" managed="false" spacing="10.0" styleClass="utility-view" visible="false">
-                <Label styleClass="view-title" text="Quản lý tài khoản (Admin)" />
-                <Label styleClass="muted-label" text="Xem thông tin, chỉnh sửa, khóa hoặc tạo tài khoản mới" />
-                <HBox spacing="15.0" VBox.vgrow="ALWAYS">
-                    <!-- Left side: Search & Table -->
-                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <TextField fx:id="txtAdminSearch" promptText="Tìm theo tài khoản/họ tên..." HBox.hgrow="ALWAYS" styleClass="app-input" />
-                            <Button onAction="#handleAdminSearch" text="Tìm kiếm" styleClass="group-button" />
-                        </HBox>
-                        <TableView fx:id="tblUsers" VBox.vgrow="ALWAYS" styleClass="admin-table">
-                            <columns>
-                                <TableColumn fx:id="colUsername" text="Tài khoản" prefWidth="100.0" />
-                                <TableColumn fx:id="colFullName" text="Họ tên" prefWidth="130.0" />
-                                <TableColumn fx:id="colRole" text="Vai trò" prefWidth="70.0" />
-                                <TableColumn fx:id="colStatus" text="Trạng thái" prefWidth="80.0" />
-                                <TableColumn fx:id="colLocked" text="Bị khóa" prefWidth="70.0" />
-                            </columns>
-                        </TableView>
-                    </VBox>
+            <!-- view tìm kiếm -->
+            <fx:include fx:id="viewSearch" source="SearchView.fxml" />
 
-                    <!-- Right side: Details Form -->
-                    <VBox prefWidth="280.0" spacing="10.0" styleClass="admin-details-pane" alignment="TOP_CENTER">
-                        <Label text="Chi tiết tài khoản" styleClass="section-label" />
-                        <VBox spacing="4.0" alignment="CENTER_LEFT">
-                            <Label text="Tên tài khoản:" styleClass="form-label" />
-                            <TextField fx:id="txtAdminUsername" editable="false" styleClass="app-input, app-input-disabled" />
-                        </VBox>
-                        <VBox spacing="4.0" alignment="CENTER_LEFT">
-                            <Label text="Họ và tên:" styleClass="form-label" />
-                            <TextField fx:id="txtAdminFullName" styleClass="app-input" />
-                        </VBox>
-                        <VBox spacing="4.0" alignment="CENTER_LEFT">
-                            <Label text="Vai trò:" styleClass="form-label" />
-                            <ComboBox fx:id="cmbAdminRole" prefWidth="280.0" styleClass="app-combobox" />
-                        </VBox>
-                        <VBox spacing="4.0" alignment="CENTER_LEFT">
-                            <Label text="Mật khẩu mới (Tạo/Đặt lại):" styleClass="form-label" />
-                            <PasswordField fx:id="txtAdminNewPassword" promptText="Nhập mật khẩu..." styleClass="app-input" />
-                        </VBox>
-                        <Separator />
-                        <HBox spacing="6.0" alignment="CENTER">
-                            <Button fx:id="btnAdminSave" onAction="#handleAdminSaveUser" text="Lưu" styleClass="group-button" prefWidth="70.0" />
-                            <Button fx:id="btnAdminToggleLock" onAction="#handleAdminToggleLock" text="Khóa" styleClass="warning-button" prefWidth="70.0" />
-                            <Button fx:id="btnAdminResetPw" onAction="#handleAdminResetPassword" text="Đặt lại MK" styleClass="danger-button" prefWidth="100.0" />
-                        </HBox>
-                        <Separator />
-                        <Button onAction="#handleAdminOpenCreateForm" text="Tạo tài khoản mới" styleClass="warning-button" prefWidth="250.0" />
-                    </VBox>
-                </HBox>
-            </VBox>
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
+            <!-- view khung chat -->
+            <fx:include fx:id="viewChat" source="ChatWorkspaceView.fxml" />
+
+            <!-- view danh bạ -->
+            <fx:include fx:id="viewContacts" source="ContactsView.fxml" />
+
+            <!-- view nhóm -->
+            <fx:include fx:id="viewGroups" source="GroupsView.fxml" />
+
+            <!-- view hồ sơ -->
+            <fx:include fx:id="viewProfile" source="ProfileView.fxml" />
+
+            <!-- view admin -->
+            <fx:include fx:id="viewAdmin" source="AdminView.fxml" />
         </StackPane>
     </center>
 </BorderPane>

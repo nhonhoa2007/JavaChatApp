@@ -82,11 +82,7 @@ public class MessageReactionDAO {
 		return result;
 	}
 
-	/**
-	 * Batch query reactions cho nhiều messages cùng lúc.
-	 * Thay vì N query (1 per message), chỉ cần 1 query duy nhất.
-	 * @return Map messageId → JsonArray reactions
-	 */
+	// tải reaction của nhiều tin nhắn bằng một query
 	public Map<Long, JsonArray> getReactionSummaryBatch(List<Long> messageIds) {
 		Map<Long, JsonArray> result = new HashMap<>();
 		if (messageIds == null || messageIds.isEmpty()) {

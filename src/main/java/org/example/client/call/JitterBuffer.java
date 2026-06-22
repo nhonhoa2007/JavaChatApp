@@ -3,10 +3,10 @@ package org.example.client.call;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-// Jitter buffer cho audio streaming.
-// Hấp thụ biến thiên thời gian giữa các UDP packet.
-// Prebuffer 5 frame (100ms) trước khi bắt đầu phát.
-// Overflow: drop oldest. Underrun: PLC (repeat last frame).
+// đệm jitter cho luồng âm thanh
+// giảm dao động thời gian giữa các gói udp
+// đệm trước 5 frame trước khi phát
+// bỏ frame cũ khi đầy và lặp frame cuối khi thiếu dữ liệu
 public class JitterBuffer {
 
     private static final int CAPACITY = 20;
@@ -16,10 +16,10 @@ public class JitterBuffer {
     private volatile boolean prebuffering = true;
     private byte[] lastFrame;
 
-    // Producer: nhận frame từ UDP, đưa vào buffer
+    // nhận frame từ udp và đưa vào buffer
     public void put(byte[] frame) {
         if (!queue.offer(frame)) {
-            queue.poll(); // drop oldest nếu đầy
+            queue.poll(); // bỏ frame cũ nhất khi đầy
             queue.offer(frame);
         }
         if (prebuffering && queue.size() >= MIN_PREBUFFER) {
@@ -27,7 +27,7 @@ public class JitterBuffer {
         }
     }
 
-    // Consumer: lấy frame ra để phát
+    // lấy frame ra để phát
     public byte[] take() {
         if (prebuffering) {
             return null;
@@ -35,13 +35,13 @@ public class JitterBuffer {
         byte[] frame = queue.poll();
         if (frame == null) {
             prebuffering = true;
-            return lastFrame; // PLC
+            return lastFrame; // lặp frame cuối khi thiếu dữ liệu
         }
         lastFrame = frame;
         return frame;
     }
 
-    // Consumer blocking: lấy frame với timeout
+    // lấy frame với timeout chờ
     public byte[] take(long timeoutMs) {
         if (prebuffering) {
             try { Thread.sleep(timeoutMs); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }

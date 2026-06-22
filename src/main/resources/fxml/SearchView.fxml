@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="viewSearch" spacing="12.0" styleClass="utility-view" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.SearchViewController">
+    <Label styleClass="view-title" text="Tìm kiếm và thêm bạn bè" />
+    <TextField fx:id="txtSearchFriend" promptText="Tìm kiếm bạn bè..." styleClass="app-input" />
+    <Label styleClass="section-label" text="Kết quả tìm kiếm bạn bè:" />
+    <ListView fx:id="listSearchResults" styleClass="panel-list" VBox.vgrow="ALWAYS" />
+</VBox>

@@ -43,7 +43,7 @@ public class FriendshipDAO {
         }
     }
 
-    // Tách riêng hàm cập nhật Block để tránh lỗi Detached Entity khi merge
+    // cập nhật trạng thái chặn riêng để tránh detached entity
     public boolean updateBlockStatus(User user1, User user2, String blockedBy) {
         Transaction transaction = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
@@ -51,7 +51,7 @@ public class FriendshipDAO {
             String hql = "UPDATE Friendship f SET f.blockedBy = :blockedBy WHERE (f.user.id = :u1Id AND f.friend.id = :u2Id) OR (f.user.id = :u2Id AND f.friend.id = :u1Id)";
             Query<?> query = session.createQuery(hql);
             if (blockedBy == null) {
-                query.setParameter("blockedBy", null, String.class);
+                query.setParameter("blockedBy", (String) null);
             } else {
                 query.setParameter("blockedBy", blockedBy);
             }
@@ -69,7 +69,7 @@ public class FriendshipDAO {
         }
     }
 
-    // Tách riêng hàm cập nhật Mute
+    // cập nhật trạng thái tắt thông báo riêng
     public boolean updateMuteStatus(User user1, User user2, String mutedBy) {
         Transaction transaction = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
@@ -77,7 +77,7 @@ public class FriendshipDAO {
             String hql = "UPDATE Friendship f SET f.mutedBy = :mutedBy WHERE (f.user.id = :u1Id AND f.friend.id = :u2Id) OR (f.user.id = :u2Id AND f.friend.id = :u1Id)";
             Query<?> query = session.createQuery(hql);
             if (mutedBy == null) {
-                query.setParameter("mutedBy", null, String.class);
+                query.setParameter("mutedBy", (String) null);
             } else {
                 query.setParameter("mutedBy", mutedBy);
             }
@@ -166,7 +166,6 @@ public class FriendshipDAO {
             return false;
         }
     }
-<<<<<<< HEAD
 
     public List<Friendship> getAllFriendships(User user) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
@@ -179,6 +178,4 @@ public class FriendshipDAO {
             return java.util.Collections.emptyList();
         }
     }
-=======
->>>>>>> 67bf400d8ef98f36308a989e33fbbb4dfc6f2a3e
 }

@@ -2,7 +2,6 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.SVGPath?>
 
 <VBox fx:id="viewChat" spacing="0.0" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ChatWorkspaceController">
     <StackPane styleClass="chat-workspace" VBox.vgrow="ALWAYS">
@@ -16,51 +15,30 @@
                 <Label fx:id="lblChatTitle" styleClass="chat-title" text="Chọn hội thoại để xem lịch sử chat" />
                 <StackPane fx:id="chatHeaderAvatar" />
                 <Region HBox.hgrow="ALWAYS" />
-                <Button fx:id="btnCall" contentDisplay="GRAPHIC_ONLY" onAction="#handleCallUser" styleClass="nav-button" visible="false">
-                    <graphic>
-                        <SVGPath scaleX="1.05" scaleY="1.05" styleClass="header-call-icon" content="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.61 21 3 13.39 3 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.24.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-                    </graphic>
-                </Button>
-                <Button fx:id="btnVideoCall" contentDisplay="GRAPHIC_ONLY" onAction="#handleVideoCallUser" styleClass="nav-button" visible="false">
-                    <graphic>
-                        <SVGPath scaleX="1.05" scaleY="1.05" styleClass="header-video-icon" content="M17 10.5V6c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v12c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-4.5l4 4v-11l-4 4z" />
-                    </graphic>
-                </Button>
+                <Button fx:id="btnCall" contentDisplay="GRAPHIC_ONLY" onAction="#handleCallUser" styleClass="nav-button" visible="false" />
+                <Button fx:id="btnVideoCall" contentDisplay="GRAPHIC_ONLY" onAction="#handleVideoCallUser" styleClass="nav-button" visible="false" />
                 <Button fx:id="btnBlock" onAction="#handleBlockUser" styleClass="danger-button" text="Chặn" visible="false" />
                 <Button fx:id="btnMute" onAction="#handleMuteUser" styleClass="warning-button" text="Tắt TB" visible="false" />
+                <Button fx:id="btnGroupMute" contentDisplay="GRAPHIC_ONLY" onAction="#handleMuteGroup" styleClass="control-icon-button warning-button" visible="false" managed="false" />
+                <Button fx:id="btnLeaveGroup" contentDisplay="GRAPHIC_ONLY" onAction="#handleLeaveGroup" styleClass="control-icon-button warning-button" visible="false" managed="false" />
+                <Button fx:id="btnDeleteGroup" contentDisplay="GRAPHIC_ONLY" onAction="#handleDeleteGroup" styleClass="control-icon-button danger-button" visible="false" managed="false" />
             </HBox>
             <ListView fx:id="listMessages" styleClass="message-list" VBox.vgrow="ALWAYS" />
             <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="composer">
-                <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleSendImage" styleClass="icon-button media-icon-image">
-                    <graphic>
-                        <SVGPath scaleX="1.1" scaleY="1.1" styleClass="composer-image-icon" content="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 11.5l2.5 3.01L14.5 10l4.5 6H5l3.5-4.5zM8.5 8C7.67 8 7 7.33 7 6.5S7.67 5 8.5 5 10 5.67 10 6.5 9.33 8 8.5 8z" />
-                    </graphic>
+                <Button fx:id="btnSendImage" contentDisplay="GRAPHIC_ONLY" onAction="#handleSendImage" styleClass="icon-button media-icon-image">
                     <tooltip><Tooltip text="Gửi ảnh" /></tooltip>
                 </Button>
-                <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleSendVideo" styleClass="icon-button media-icon-video">
-                    <graphic>
-                        <SVGPath scaleX="1.1" scaleY="1.1" styleClass="composer-video-icon" content="M17 10.5V6c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v12c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-4.5l4 4v-11l-4 4z" />
-                    </graphic>
+                <Button fx:id="btnSendVideo" contentDisplay="GRAPHIC_ONLY" onAction="#handleSendVideo" styleClass="icon-button media-icon-video">
                     <tooltip><Tooltip text="Gửi video" /></tooltip>
                 </Button>
-                <Button contentDisplay="GRAPHIC_ONLY" onAction="#handleSendFile" styleClass="icon-button media-icon-file">
-                    <graphic>
-                        <SVGPath scaleX="1.35" scaleY="1.35" styleClass="composer-file-icon" content="M16.5 6.5 7.8 15.2a3 3 0 1 0 4.24 4.24l8.49-8.49a5 5 0 0 0-7.07-7.07L4.97 12.37a7 7 0 1 0 9.9 9.9l8.49-8.49-1.41-1.41-8.49 8.49a5 5 0 1 1-7.07-7.07l8.49-8.49a3 3 0 1 1 4.24 4.24l-8.49 8.49a1 1 0 1 1-1.41-1.41l8.7-8.7-1.42-1.42z" />
-                    </graphic>
+                <Button fx:id="btnSendFile" contentDisplay="GRAPHIC_ONLY" onAction="#handleSendFile" styleClass="icon-button media-icon-file">
                     <tooltip><Tooltip text="Gửi tệp" /></tooltip>
                 </Button>
                 <Button fx:id="btnVoice" contentDisplay="GRAPHIC_ONLY" onAction="#handleSendVoice" styleClass="icon-button media-icon-voice">
-                    <graphic>
-                        <SVGPath scaleX="1.05" scaleY="1.05" styleClass="composer-voice-icon" content="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-                    </graphic>
                     <tooltip><Tooltip text="Gửi voice" /></tooltip>
                 </Button>
                 <TextArea fx:id="txtMessage" promptText="Nhập tin nhắn..." styleClass="message-input" wrapText="true" HBox.hgrow="ALWAYS" />
-                <Button contentDisplay="GRAPHIC_ONLY" minHeight="52.0" minWidth="56.0" onAction="#handleSendMessage" prefHeight="52.0" prefWidth="56.0" styleClass="send-button">
-                    <graphic>
-                        <SVGPath scaleX="1.25" scaleY="1.25" styleClass="send-icon" content="M2 21 23 12 2 3v7l15 2-15 2v7z" />
-                    </graphic>
-                </Button>
+                <Button fx:id="btnSendMessage" contentDisplay="GRAPHIC_ONLY" minHeight="52.0" minWidth="56.0" onAction="#handleSendMessage" prefHeight="52.0" prefWidth="56.0" styleClass="send-button" />
             </HBox>
         </VBox>
     </StackPane>

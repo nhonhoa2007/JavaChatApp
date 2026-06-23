@@ -25,14 +25,19 @@ public class GroupMember {
 	@Column(name = "joined_at", nullable = false)
 	private LocalDateTime joinedAt;
 
+	@Column(name = "is_muted")
+	private Boolean muted;
+
 	public GroupMember() {
 		this.joinedAt = LocalDateTime.now();
+		this.muted = false;
 	}
 
 	public GroupMember(GroupChat groupChat, User user) {
 		this.groupChat = groupChat;
 		this.user = user;
 		this.joinedAt = LocalDateTime.now();
+		this.muted = false;
 	}
 
 	public Long getId() {
@@ -65,6 +70,14 @@ public class GroupMember {
 
 	public void setJoinedAt(LocalDateTime joinedAt) {
 		this.joinedAt = joinedAt;
+	}
+
+	public boolean isMuted() {
+		return Boolean.TRUE.equals(muted);
+	}
+
+	public void setMuted(boolean muted) {
+		this.muted = muted;
 	}
 }
 

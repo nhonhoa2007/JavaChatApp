@@ -6,6 +6,7 @@ import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
@@ -14,8 +15,9 @@ import javafx.util.Duration;
 import org.example.client.call.CallEventListener;
 import org.example.client.call.CallManager;
 import org.example.client.call.CallSession;
+import org.example.client.util.IconUtil;
 
-// điều khiển màn hình cuộc gọi đang diễn ra
+// Điều khiển màn hình cuộc gọi đang diễn ra
 public class CallViewController implements CallEventListener {
 
     @FXML private StackPane rootPane;
@@ -37,6 +39,14 @@ public class CallViewController implements CallEventListener {
     private boolean muted;
     private boolean cameraMuted;
 
+    public void initialize() {
+        lblAvatar.setText(null);
+        lblAvatar.setGraphic(IconUtil.createIcon("/icon/user.svg", "call-avatar-icon", 2.5));
+        setButtonIcon(btnMute, "/icon/mic.svg", "call-control-icon", 1.15);
+        setButtonIcon(btnCamera, "/icon/video.svg", "call-control-icon", 1.15);
+        setButtonIcon(btnEnd, "/icon/phone-off.svg", "call-control-icon", 1.25);
+    }
+
     public void initData(CallSession session) {
         this.session = session;
         lblPeerName.setText(session.peerUsername);
@@ -48,16 +58,16 @@ public class CallViewController implements CallEventListener {
             btnCamera.setVisible(true);
             btnCamera.setManaged(true);
 
-            // cấu hình kích cỡ khung video
+            // Cấu hình kích cỡ khung video.
             imgRemoteVideo.setFitWidth(640);
             imgRemoteVideo.setFitHeight(480);
 
-            // chỉnh kích thước cửa sổ cho cuộc gọi video
+            // Chỉnh kích thước của cửa sổ cho cuộc gọi video.
             Platform.runLater(() -> {
                 Stage stage = (Stage) rootPane.getScene().getWindow();
                 if (stage != null) {
-                    stage.setWidth(656); // chiều rộng gồm viền cửa sổ
-                    stage.setHeight(520); // chiều cao gồm vùng điều khiển
+                    stage.setWidth(656);
+                    stage.setHeight(520);
                     stage.setResizable(false);
                     stage.centerOnScreen();
                 }
@@ -78,7 +88,7 @@ public class CallViewController implements CallEventListener {
     private void registerVideoListeners() {
         if (session == null) return;
 
-        // đăng ký nhận frame cục bộ từ camera
+        // Đăng ký nhận frame cục bộ từ camera.
         if (session.videoCaptureThread != null) {
             session.videoCaptureThread.setFrameListener(img -> {
                 Platform.runLater(() -> {
@@ -90,7 +100,7 @@ public class CallViewController implements CallEventListener {
             });
         }
 
-        // đăng ký nhận frame từ người gọi còn lại
+        // Đăng ký nhận frame từ người gọi còn lại.
         if (session.videoPlaybackThread != null) {
             session.videoPlaybackThread.setFrameListener(img -> {
                 Platform.runLater(() -> {
@@ -128,7 +138,7 @@ public class CallViewController implements CallEventListener {
     public void handleMute(ActionEvent event) {
         muted = !muted;
         CallManager.getInstance().setMuted(muted);
-        btnMute.setText(muted ? "🔇" : "🎤");
+        setButtonIcon(btnMute, muted ? "/icon/volume-off.svg" : "/icon/mic.svg", "call-control-icon", 1.15);
         btnMute.setStyle(muted
                 ? "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 20px; -fx-min-width: 56; -fx-min-height: 56; -fx-background-radius: 28; -fx-cursor: hand;"
                 : "-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 20px; -fx-min-width: 56; -fx-min-height: 56; -fx-background-radius: 28; -fx-cursor: hand;");
@@ -138,7 +148,7 @@ public class CallViewController implements CallEventListener {
     public void handleCameraToggle(ActionEvent event) {
         cameraMuted = !cameraMuted;
         CallManager.getInstance().setVideoMuted(cameraMuted);
-        btnCamera.setText(cameraMuted ? "❌📷" : "📷");
+        setButtonIcon(btnCamera, cameraMuted ? "/icon/camera-off.svg" : "/icon/video.svg", "call-control-icon", 1.15);
         btnCamera.setStyle(cameraMuted
                 ? "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 20px; -fx-min-width: 56; -fx-min-height: 56; -fx-background-radius: 28; -fx-cursor: hand;"
                 : "-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 20px; -fx-min-width: 56; -fx-min-height: 56; -fx-background-radius: 28; -fx-cursor: hand;");
@@ -158,6 +168,13 @@ public class CallViewController implements CallEventListener {
             CallManager.getInstance().removeListener(this);
             closeWindow();
         });
+    }
+
+    private void setButtonIcon(Button button, String resourcePath, String styleClass, double scale) {
+        if (button == null) return;
+        button.setText(null);
+        button.setGraphic(IconUtil.createIcon(resourcePath, styleClass, scale));
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
     }
 
     private void startTimer() {

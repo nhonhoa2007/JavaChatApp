@@ -26,6 +26,9 @@ public class GroupsViewController {
 
     private ChatController parentController;
     private final Map<String, Long> groupDisplayToId = new HashMap<>();
+    private final Map<Long, String> groupIdToDisplay = new HashMap<>();
+    private final Map<Long, Boolean> groupMutedByMe = new HashMap<>();
+    private final Map<Long, Boolean> groupCreatedByMe = new HashMap<>();
 
     public void setParentController(ChatController parentController) {
         this.parentController = parentController;
@@ -147,20 +150,41 @@ public class GroupsViewController {
         com.google.gson.JsonArray groups = root.getAsJsonArray("groups");
         listGroups.getItems().clear();
         groupDisplayToId.clear();
+        groupIdToDisplay.clear();
+        groupMutedByMe.clear();
+        groupCreatedByMe.clear();
 
         for (int i = 0; i < groups.size(); i++) {
             com.google.gson.JsonObject g = groups.get(i).getAsJsonObject();
             String name = g.get("groupName").getAsString();
             Long id = g.get("groupId").getAsLong();
-            String displayText = name + " (ID: " + id + ")";
+            int memberCount = g.has("memberCount") ? g.get("memberCount").getAsInt() : 0;
+            boolean isMuted = g.has("isMutedByMe") && g.get("isMutedByMe").getAsBoolean();
+            boolean isCreatedByMe = g.has("isCreatedByMe") && g.get("isCreatedByMe").getAsBoolean();
+            String displayText = name + " (" + memberCount + ")";
             listGroups.getItems().add(displayText);
             groupDisplayToId.put(displayText, id);
+            groupIdToDisplay.put(id, displayText);
+            groupMutedByMe.put(id, isMuted);
+            groupCreatedByMe.put(id, isCreatedByMe);
         }
     }
 
 
     public Map<String, Long> getGroupDisplayToId() {
         return groupDisplayToId;
+    }
+
+    public String getGroupDisplay(Long groupId) {
+        return groupIdToDisplay.get(groupId);
+    }
+
+    public boolean isGroupMutedByMe(Long groupId) {
+        return groupMutedByMe.getOrDefault(groupId, false);
+    }
+
+    public boolean isGroupCreatedByMe(Long groupId) {
+        return groupCreatedByMe.getOrDefault(groupId, false);
     }
 
     private void showAlert(String title, String content, Alert.AlertType type) {

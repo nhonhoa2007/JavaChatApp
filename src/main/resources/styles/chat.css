@@ -23,8 +23,13 @@
     -fx-background-color: #24344d;
 }
 
+.nav-icon,
 .group-nav-icon {
     -fx-fill: white;
+}
+
+.nav-danger-icon {
+    -fx-fill: #ef4444;
 }
 
 .header-call-icon,
@@ -335,6 +340,17 @@
 
 .action-button-icon {
     -fx-fill: white;
+}
+
+.call-control-icon,
+.call-avatar-icon,
+.incoming-call-icon,
+.incoming-action-icon {
+    -fx-fill: white;
+}
+
+.call-log-icon {
+    -fx-fill: #64748b;
 }
 
 .danger-button {

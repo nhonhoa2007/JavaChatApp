@@ -101,6 +101,18 @@ public class ClientHandler implements Runnable {
                 chatService.handleLoadGroups(this);
                 break;
 
+            case "GROUP_MUTE_REQUEST":
+                chatService.handleMuteGroup(packet.getPayload(), this);
+                break;
+
+            case "GROUP_LEAVE_REQUEST":
+                chatService.handleLeaveGroup(packet.getPayload(), this);
+                break;
+
+            case "GROUP_DELETE_REQUEST":
+                chatService.handleDeleteGroup(packet.getPayload(), this);
+                break;
+
             case "CONVERSATION_LIST_REQUEST":
                 chatService.handleLoadConversations(this);
                 break;

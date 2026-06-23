@@ -1,23 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.SVGPath?>
 
 <BorderPane prefHeight="550.0" prefWidth="800.0" styleClass="chat-root" stylesheets="@../styles/chat.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controller.ChatController">
     <left>
         <VBox prefWidth="64.0" spacing="12.0" styleClass="side-nav">
-            <Button fx:id="btnNavSearch" onAction="#handleShowSearchView" styleClass="nav-button" text="🔍" />
-            <Button fx:id="btnNavChat" onAction="#handleShowChatView" styleClass="nav-button" text="💬" />
-            <Button fx:id="btnNavContacts" onAction="#handleShowContactsView" styleClass="nav-button" text="👥" />
-            <Button fx:id="btnNavGroups" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button">
-                <graphic>
-                    <SVGPath scaleX="1.45" scaleY="1.45" styleClass="group-nav-icon" content="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zM11 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
-                </graphic>
-            </Button>
-            <Button fx:id="btnNavProfile" onAction="#handleShowProfileView" styleClass="nav-button" text="👤" />
-            <Button fx:id="btnAdmin" onAction="#handleShowAdminView" styleClass="nav-button" text="🛠" visible="false" managed="false" />
+            <Button fx:id="btnNavSearch" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowSearchView" styleClass="nav-button" />
+            <Button fx:id="btnNavChat" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowChatView" styleClass="nav-button" />
+            <Button fx:id="btnNavContacts" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowContactsView" styleClass="nav-button" />
+            <Button fx:id="btnNavGroups" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowGroupsView" styleClass="nav-button" />
+            <Button fx:id="btnNavProfile" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowProfileView" styleClass="nav-button" />
+            <Button fx:id="btnAdmin" contentDisplay="GRAPHIC_ONLY" onAction="#handleShowAdminView" styleClass="nav-button" visible="false" managed="false" />
             <Region VBox.vgrow="ALWAYS" />
-            <Button fx:id="btnNavLogout" onAction="#handleLogout" styleClass="nav-button" text="🚪" style="-fx-text-fill: #ef4444;" />
+            <Button fx:id="btnNavLogout" contentDisplay="GRAPHIC_ONLY" onAction="#handleLogout" styleClass="nav-button" style="-fx-text-fill: #ef4444;" />
         </VBox>
     </left>
     <center>

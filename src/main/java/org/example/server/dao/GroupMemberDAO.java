@@ -6,6 +6,7 @@ import org.example.common.model.User;
 import org.example.server.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.query.MutationQuery;
 import org.hibernate.query.Query;
 
 import java.util.HashMap;
@@ -31,16 +32,20 @@ public class GroupMemberDAO {
     }
 
     public boolean isMember(GroupChat groupChat, User user) {
+        return findMember(groupChat, user) != null;
+    }
+
+    public GroupMember findMember(GroupChat groupChat, User user) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM GroupMember gm WHERE gm.groupChat.id = :groupId AND gm.user.id = :userId";
             Query<GroupMember> query = session.createQuery(hql, GroupMember.class);
             query.setParameter("groupId", groupChat.getId());
             query.setParameter("userId", user.getId());
             query.setMaxResults(1);
-            return query.uniqueResult() != null;
+            return query.uniqueResult();
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            return null;
         }
     }
 
@@ -53,6 +58,59 @@ public class GroupMemberDAO {
         } catch (Exception e) {
             e.printStackTrace();
             return List.of();
+        }
+    }
+
+    public List<GroupMember> getGroupMembers(GroupChat groupChat) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM GroupMember gm WHERE gm.groupChat.id = :groupId";
+            Query<GroupMember> query = session.createQuery(hql, GroupMember.class);
+            query.setParameter("groupId", groupChat.getId());
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    public boolean updateMuted(GroupChat groupChat, User user, boolean muted) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            String hql = "UPDATE GroupMember gm SET gm.muted = :muted WHERE gm.groupChat.id = :groupId AND gm.user.id = :userId";
+            MutationQuery query = session.createMutationQuery(hql);
+            query.setParameter("muted", muted);
+            query.setParameter("groupId", groupChat.getId());
+            query.setParameter("userId", user.getId());
+            int updated = query.executeUpdate();
+            transaction.commit();
+            return updated > 0;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean removeMember(GroupChat groupChat, User user) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            String hql = "DELETE FROM GroupMember gm WHERE gm.groupChat.id = :groupId AND gm.user.id = :userId";
+            MutationQuery query = session.createMutationQuery(hql);
+            query.setParameter("groupId", groupChat.getId());
+            query.setParameter("userId", user.getId());
+            int deleted = query.executeUpdate();
+            transaction.commit();
+            return deleted > 0;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
         }
     }
 

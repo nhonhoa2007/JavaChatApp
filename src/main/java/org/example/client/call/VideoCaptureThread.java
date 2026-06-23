@@ -250,7 +250,7 @@ public class VideoCaptureThread extends Thread {
 
         g.setColor(java.awt.Color.LIGHT_GRAY);
         g.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 24));
-        g.drawString("CAMERA ĐÃ TẮT 📷", width / 2 - 100, height / 2);
+        g.drawString("CAMERA ĐÃ TẮT", width / 2 - 100, height / 2);
 
         g.dispose();
         return img;

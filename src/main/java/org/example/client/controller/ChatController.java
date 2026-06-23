@@ -19,6 +19,7 @@ import org.example.client.call.CallEventListener;
 import org.example.client.call.CallManager;
 import org.example.client.call.CallSession;
 import org.example.client.call.RingtonePlayer;
+import org.example.client.util.IconUtil;
 import org.example.common.network.CallPacketTypes;
 import org.example.common.network.Packet;
 
@@ -130,6 +131,8 @@ public class ChatController {
     }
 
     public void initialize() {
+        configureNavIcons();
+
         ClientApplication.getChatClient().setOnPacketReceived(this::handleServerResponse);
 
         CallManager.init(ClientApplication.getChatClient());
@@ -180,6 +183,23 @@ public class ChatController {
         }
     }
 
+    private void configureNavIcons() {
+        setNavIcon(btnNavSearch, "/icon/search.svg", "nav-icon", 1.0);
+        setNavIcon(btnNavChat, "/icon/chat.svg", "nav-icon", 1.0);
+        setNavIcon(btnNavContacts, "/icon/contacts.svg", "nav-icon", 1.0);
+        setNavIcon(btnNavGroups, "/icon/groups.svg", "nav-icon", 1.45);
+        setNavIcon(btnNavProfile, "/icon/profile.svg", "nav-icon", 1.0);
+        setNavIcon(btnAdmin, "/icon/tools.svg", "nav-icon", 1.0);
+        setNavIcon(btnNavLogout, "/icon/logout.svg", "nav-danger-icon", 1.0);
+    }
+
+    private void setNavIcon(Button button, String resourcePath, String styleClass, double scale) {
+        if (button == null) return;
+        button.setText(null);
+        button.setGraphic(IconUtil.createIcon(resourcePath, styleClass, scale));
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+    }
+
     private void handleServerResponse(Packet packet) {
         Platform.runLater(() -> {
             switch (packet.getType()) {
@@ -208,6 +228,7 @@ public class ChatController {
                     }
                     if (viewChatController != null) {
                         viewChatController.refreshConversationsFromLocalState();
+                        viewChatController.refreshActiveGroupControls();
                     }
                     break;
                 case "CONVERSATION_LIST":
@@ -220,6 +241,13 @@ public class ChatController {
                     if (viewChatController != null) {
                         viewChatController.requestConversationList();
                     }
+                    break;
+                case "GROUP_REMOVED":
+                    if (viewChatController != null) {
+                        viewChatController.handleGroupRemoved(packet.getPayload());
+                        viewChatController.requestConversationList();
+                    }
+                    ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LIST_REQUEST", ""));
                     break;
                 case "GROUP_SUCCESS":
                     showAlert("Thông báo", packet.getPayload(), Alert.AlertType.INFORMATION);

@@ -228,6 +228,10 @@ public class ChatService {
                 groupObj.addProperty("groupId", g.getId());
                 groupObj.addProperty("groupName", g.getName());
                 groupObj.addProperty("memberCount", memberCounts.getOrDefault(g.getId(), 0));
+                groupObj.addProperty("creatorUsername", g.getCreatedBy().getUsername());
+                groupObj.addProperty("isCreatedByMe", g.getCreatedBy().getId().equals(user.getId()));
+                GroupMember membership = groupMemberDAO.findMember(g, user);
+                groupObj.addProperty("isMutedByMe", membership != null && membership.isMuted());
                 groupsArray.add(groupObj);
             }
 
@@ -348,14 +352,115 @@ public class ChatService {
             outgoing.addProperty("sender", sender.getUsername());
             outgoing.addProperty("groupId", groupId);
 
-            Packet groupPacket = new Packet("GROUP_MESSAGE", outgoing.toString());
-            for (User member : groupMemberDAO.getMembers(groupChat)) {
-                if (!member.getUsername().equals(sender.getUsername())) {
-                    serverManager.sendToClient(member.getUsername(), groupPacket);
+            for (GroupMember member : groupMemberDAO.getGroupMembers(groupChat)) {
+                User recipient = member.getUser();
+                if (!recipient.getUsername().equals(sender.getUsername())) {
+                    JsonObject recipientPayload = outgoing.deepCopy();
+                    recipientPayload.addProperty("isMuted", member.isMuted());
+                    serverManager.sendToClient(recipient.getUsername(), new Packet("GROUP_MESSAGE", recipientPayload.toString()));
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public void handleMuteGroup(String payload, ClientHandler client) {
+        try {
+            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+            long groupId = json.get("groupId").getAsLong();
+
+            User user = userDAO.findByUsername(client.getCurrentUsername());
+            GroupChat groupChat = groupDAO.findById(groupId);
+            if (user == null || groupChat == null) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Không tìm thấy nhóm."));
+                return;
+            }
+
+            GroupMember membership = groupMemberDAO.findMember(groupChat, user);
+            if (membership == null) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Bạn không thuộc nhóm này."));
+                return;
+            }
+
+            boolean newMuted = !membership.isMuted();
+            if (!groupMemberDAO.updateMuted(groupChat, user, newMuted)) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Không thể cập nhật thông báo nhóm."));
+                return;
+            }
+
+            client.sendPacket(new Packet("GROUP_SUCCESS",
+                    newMuted ? "Đã tắt thông báo nhóm." : "Đã bật lại thông báo nhóm."));
+            client.sendPacket(new Packet("GROUP_LIST_UPDATED", ""));
+        } catch (Exception e) {
+            e.printStackTrace();
+            client.sendPacket(new Packet("GROUP_ERROR", "Không thể cập nhật thông báo nhóm."));
+        }
+    }
+
+    public void handleLeaveGroup(String payload, ClientHandler client) {
+        try {
+            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+            long groupId = json.get("groupId").getAsLong();
+
+            User user = userDAO.findByUsername(client.getCurrentUsername());
+            GroupChat groupChat = groupDAO.findById(groupId);
+            if (user == null || groupChat == null) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Không tìm thấy nhóm."));
+                return;
+            }
+            if (groupChat.getCreatedBy().getId().equals(user.getId())) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Người tạo nhóm cần xóa nhóm thay vì rời nhóm."));
+                return;
+            }
+            if (!groupMemberDAO.isMember(groupChat, user)) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Bạn không thuộc nhóm này."));
+                return;
+            }
+
+            List<User> membersBeforeLeave = groupMemberDAO.getMembers(groupChat);
+            if (!groupMemberDAO.removeMember(groupChat, user)) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Không thể rời nhóm."));
+                return;
+            }
+
+            notifyGroupRemoved(user, groupId, "Bạn đã rời nhóm " + groupChat.getName() + ".");
+            notifyUsersGroupListUpdated(membersBeforeLeave);
+        } catch (Exception e) {
+            e.printStackTrace();
+            client.sendPacket(new Packet("GROUP_ERROR", "Không thể rời nhóm."));
+        }
+    }
+
+    public void handleDeleteGroup(String payload, ClientHandler client) {
+        try {
+            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+            long groupId = json.get("groupId").getAsLong();
+
+            User user = userDAO.findByUsername(client.getCurrentUsername());
+            GroupChat groupChat = groupDAO.findById(groupId);
+            if (user == null || groupChat == null) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Không tìm thấy nhóm."));
+                return;
+            }
+            if (!groupChat.getCreatedBy().getId().equals(user.getId())) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Chỉ người tạo nhóm mới được xóa nhóm."));
+                return;
+            }
+
+            List<User> membersBeforeDelete = groupMemberDAO.getMembers(groupChat);
+            if (!groupDAO.deleteGroup(groupChat)) {
+                client.sendPacket(new Packet("GROUP_ERROR", "Không thể xóa nhóm."));
+                return;
+            }
+
+            for (User member : membersBeforeDelete) {
+                notifyGroupRemoved(member, groupId, "Nhóm đã bị xóa bởi người tạo nhóm.");
+            }
+            notifyUsersGroupListUpdated(membersBeforeDelete);
+        } catch (Exception e) {
+            e.printStackTrace();
+            client.sendPacket(new Packet("GROUP_ERROR", "Không thể xóa nhóm."));
         }
     }
 
@@ -485,32 +590,34 @@ public class ChatService {
         obj.addProperty("timestamp", log.getStartedAt().toString());
 
         // tạo nội dung hiển thị theo trạng thái cuộc gọi
-        String icon;
+        String iconResource;
         String text;
         switch (log.getStatus()) {
             case "COMPLETED" -> {
-                icon = "📞";
+                iconResource = "VIDEO".equals(log.getCallType()) ? "/icon/video.svg" : "/icon/phone.svg";
                 int dur = log.getDurationSec() != null ? log.getDurationSec() : 0;
-                text = "Cuộc gọi thoại — " + String.format("%d:%02d", dur / 60, dur % 60);
+                String callKind = "VIDEO".equals(log.getCallType()) ? "video" : "thoại";
+                text = "Cuộc gọi " + callKind + " — " + String.format("%d:%02d", dur / 60, dur % 60);
             }
             case "MISSED" -> {
-                icon = "📵";
+                iconResource = "/icon/phone-off.svg";
                 text = isCaller ? "Cuộc gọi nhỡ (không nhấc máy)" : "Cuộc gọi nhỡ";
             }
             case "REJECTED" -> {
-                icon = "❌";
+                iconResource = "/icon/x.svg";
                 text = isCaller ? "Đã bị từ chối" : "Bạn đã từ chối";
             }
             case "CANCELED" -> {
-                icon = "↩️";
+                iconResource = "/icon/phone-off.svg";
                 text = isCaller ? "Bạn đã hủy cuộc gọi" : "Cuộc gọi bị hủy";
             }
             default -> {
-                icon = "📞";
+                iconResource = "/icon/phone.svg";
                 text = "Cuộc gọi";
             }
         }
-        obj.addProperty("content", icon + " " + text);
+        obj.addProperty("icon", iconResource);
+        obj.addProperty("content", text);
 
         return obj;
     }
@@ -558,5 +665,18 @@ public class ChatService {
         for (User member : groupMemberDAO.getMembers(groupChat)) {
             serverManager.sendToClient(member.getUsername(), new Packet("GROUP_LIST_UPDATED", ""));
         }
+    }
+
+    private void notifyUsersGroupListUpdated(List<User> users) {
+        for (User user : users) {
+            serverManager.sendToClient(user.getUsername(), new Packet("GROUP_LIST_UPDATED", ""));
+        }
+    }
+
+    private void notifyGroupRemoved(User user, long groupId, String reason) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("groupId", groupId);
+        payload.addProperty("reason", reason);
+        serverManager.sendToClient(user.getUsername(), new Packet("GROUP_REMOVED", payload.toString()));
     }
 }

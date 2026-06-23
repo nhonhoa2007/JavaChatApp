@@ -2,7 +2,7 @@ package org.example.common.network;
 
 import com.google.gson.Gson;
 
-// định nghĩa payload cho các packet call
+
 public final class CallPayloads {
 
     private static final Gson GSON = new Gson();

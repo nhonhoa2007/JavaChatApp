@@ -9,6 +9,7 @@
 <VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.client.controller.IncomingCallController"
+      stylesheets="@../styles/chat.css"
       style="-fx-background-color: linear-gradient(to bottom, #1e293b, #0f172a);"
       prefWidth="320" prefHeight="400">
 
@@ -17,7 +18,7 @@
     </padding>
 
     <!-- biểu tượng -->
-    <Label text="📞" style="-fx-font-size: 56px;"/>
+    <Label fx:id="lblIncomingIcon" style="-fx-font-size: 56px;"/>
 
     <!-- tiêu đề -->
     <Label text="Cuộc gọi đến" style="-fx-font-size: 14px; -fx-text-fill: #94a3b8;"/>
@@ -35,10 +36,10 @@
         <padding>
             <Insets top="20.0"/>
         </padding>
-        <Button fx:id="btnReject" text="❌ Từ chối" onAction="#handleReject"
+        <Button fx:id="btnReject" onAction="#handleReject"
                 style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 14px;
                        -fx-padding: 12 24; -fx-background-radius: 24; -fx-cursor: hand;"/>
-        <Button fx:id="btnAccept" text="✅ Chấp nhận" onAction="#handleAccept"
+        <Button fx:id="btnAccept" onAction="#handleAccept"
                 style="-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-size: 14px;
                        -fx-padding: 12 24; -fx-background-radius: 24; -fx-cursor: hand;"/>
     </HBox>

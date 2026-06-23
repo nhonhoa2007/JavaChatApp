@@ -24,7 +24,6 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
@@ -32,6 +31,7 @@ import javafx.util.Duration;
 import org.controlsfx.control.Notifications;
 import org.example.client.ClientApplication;
 import org.example.client.call.CallManager;
+import org.example.client.util.IconUtil;
 import org.example.client.util.VoicePlayer;
 import org.example.client.util.VoiceRecorder;
 import org.example.common.network.CallPacketTypes;
@@ -75,6 +75,27 @@ public class ChatWorkspaceController {
     private Button btnMute;
 
     @FXML
+    private Button btnGroupMute;
+
+    @FXML
+    private Button btnLeaveGroup;
+
+    @FXML
+    private Button btnDeleteGroup;
+
+    @FXML
+    private Button btnSendImage;
+
+    @FXML
+    private Button btnSendVideo;
+
+    @FXML
+    private Button btnSendFile;
+
+    @FXML
+    private Button btnSendMessage;
+
+    @FXML
     private ListView<Object> listMessages;
 
     @FXML
@@ -107,10 +128,10 @@ public class ChatWorkspaceController {
     private String voiceRecordingTarget;
     private String voiceRecordingConversation;
 
-    private static final String LOCK_ICON = "M17 8h-1V6c0-2.21-1.79-4-4-4S8 3.79 8 6v2H7c-1.1 0-2 .9-2 2v10c0 1.1 .9 2 2 2h10c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM10 6c0-1.1 .9-2 2-2s2 .9 2 2v2h-4V6zm3 10.73V18h-2v-1.27c-.6-.35-1-.99-1-1.73 0-1.1 .9-2 2-2s2 .9 2 2c0 .74-.4 1.38-1 1.73z";
-    private static final String UNLOCK_ICON = "M17 8h-7V6c0-1.1 .9-2 2-2 .73 0 1.41 .4 1.76 1.04l1.75-.96C14.8 2.8 13.47 2 12 2 9.79 2 8 3.79 8 6v2H7c-1.1 0-2 .9-2 2v10c0 1.1 .9 2 2 2h10c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-4 8.73V18h-2v-1.27c-.6-.35-1-.99-1-1.73 0-1.1 .9-2 2-2s2 .9 2 2c0 .74-.4 1.38-1 1.73z";
-    private static final String BELL_ICON = "M12 22c1.1 0 2-.9 2-2h-4c0 1.1 .9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5S10.5 3.17 10.5 4v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z";
-    private static final String BELL_OFF_ICON = "M20.59 21.99 2.01 3.41 3.42 2l18.58 18.58-1.41 1.41zM18 16v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5-.77 0-1.39 .58-1.48 1.32L18 11.29V16zm-2.18 3H4v-1l2-2v-5c0-1.17 .24-2.27 .68-3.24L15.82 17H20v1l-2 2h-2.18zM12 22c1.1 0 2-.9 2-2h-4c0 1.1 .9 2 2 2z";
+    private static final String LOCK_ICON = "/icon/lock.svg";
+    private static final String UNLOCK_ICON = "/icon/unlock.svg";
+    private static final String BELL_ICON = "/icon/bell.svg";
+    private static final String BELL_OFF_ICON = "/icon/bell-off.svg";
 
     public void setParentController(ChatController parentController) {
         this.parentController = parentController;
@@ -121,6 +142,8 @@ public class ChatWorkspaceController {
     }
 
     public void initialize() {
+        configureStaticIcons();
+
         if (listRecentConversations != null) {
             listRecentConversations.setItems(recentConversations);
             listRecentConversations.setCellFactory(lv -> new ListCell<>() {
@@ -165,6 +188,7 @@ public class ChatWorkspaceController {
         String displayName = userDisplayNameByUsername.getOrDefault(username, username);
         clearChatPaneForConversation("Chat với: " + displayName);
         updateHeaderAvatar(userAvatarByUsername.get(username), displayName, username);
+        hideGroupControlButtons();
         updateControlButtons(username);
         switchToChatMessages();
         loadHistory(username);
@@ -175,10 +199,8 @@ public class ChatWorkspaceController {
         currentConversationKey = groupConversationKey(groupId);
         clearChatPaneForConversation("Nhóm: " + groupDisplay);
         updateHeaderAvatar("", groupDisplay, groupDisplay);
-        if (btnCall != null) btnCall.setVisible(false);
-        if (btnVideoCall != null) btnVideoCall.setVisible(false);
-        if (btnBlock != null) btnBlock.setVisible(false);
-        if (btnMute != null) btnMute.setVisible(false);
+        hidePrivateControlButtons();
+        updateGroupControlButtons(groupId);
         switchToChatMessages();
         loadGroupHistory(groupId);
         addToRecentConversations(groupDisplay, currentConversationKey);
@@ -192,6 +214,25 @@ public class ChatWorkspaceController {
             String peer = item.key().substring(8);
             startPrivateChat(peer);
         }
+    }
+
+    private void configureStaticIcons() {
+        setButtonIcon(btnCall, "/icon/phone.svg", "header-call-icon", 1.05);
+        setButtonIcon(btnVideoCall, "/icon/video.svg", "header-video-icon", 1.05);
+        setButtonIcon(btnSendImage, "/icon/image.svg", "composer-image-icon", 1.1);
+        setButtonIcon(btnSendVideo, "/icon/video.svg", "composer-video-icon", 1.1);
+        setButtonIcon(btnSendFile, "/icon/file.svg", "composer-file-icon", 1.35);
+        setButtonIcon(btnVoice, "/icon/mic.svg", "composer-voice-icon", 1.05);
+        setButtonIcon(btnSendMessage, "/icon/send.svg", "send-icon", 1.25);
+        setButtonIcon(btnLeaveGroup, "/icon/logout.svg", "action-button-icon", 0.82);
+        setButtonIcon(btnDeleteGroup, "/icon/trash.svg", "action-button-icon", 0.82);
+    }
+
+    private void setButtonIcon(Button button, String resourcePath, String styleClass, double scale) {
+        if (button == null) return;
+        button.setText(null);
+        button.setGraphic(IconUtil.createIcon(resourcePath, styleClass, scale));
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
     }
 
     public void switchToRecentConversations() {
@@ -253,6 +294,13 @@ public class ChatWorkspaceController {
 
     public void requestConversationList() {
         ClientApplication.getChatClient().sendPacket(new Packet("CONVERSATION_LIST_REQUEST", ""));
+    }
+
+    public void refreshActiveGroupControls() {
+        Long groupId = getActiveGroupTargetId();
+        if (groupId != null) {
+            updateGroupControlButtons(groupId);
+        }
     }
 
     public void handleConversationList(String payload) {
@@ -443,6 +491,7 @@ public class ChatWorkspaceController {
             String content = msg.get("content").getAsString();
             String type = msg.get("type").getAsString();
             String filename = msg.has("filename") ? msg.get("filename").getAsString() : null;
+            String iconResource = "CALL_LOG".equals(type) ? getJsonString(msg, "icon", null) : filename;
             String senderUsername = getJsonString(msg, "senderUsername", "Bạn".equals(sender) ? currentUsername : sender);
             String senderDisplayName = getJsonString(msg, "senderDisplayName", sender);
             String senderAvatar = getJsonString(msg, "senderAvatar", userAvatarByUsername.getOrDefault(senderUsername, ""));
@@ -451,7 +500,7 @@ public class ChatWorkspaceController {
             boolean isMe = "Bạn".equals(sender);
             String senderLabel = isMe ? sender : senderDisplayName;
             listMessages.getItems().add(createMessageNodeByType(id, senderLabel, content, isMe, type,
-                    msg.has("reactions") ? msg.getAsJsonArray("reactions") : null, filename,
+                    msg.has("reactions") ? msg.getAsJsonArray("reactions") : null, iconResource,
                     senderUsername, senderDisplayName, senderAvatar));
 
             if (!"CALL_LOG".equals(type)) {
@@ -555,6 +604,7 @@ public class ChatWorkspaceController {
             String type = msg.get("type").getAsString();
             boolean isMe = "Bạn".equals(sender);
             String filename = msg.has("filename") ? msg.get("filename").getAsString() : null;
+            String iconResource = "CALL_LOG".equals(type) ? getJsonString(msg, "icon", null) : filename;
             String senderUsername = getJsonString(msg, "senderUsername", isMe ? currentUsername : sender);
             String senderDisplayName = getJsonString(msg, "senderDisplayName", sender);
             String senderAvatar = getJsonString(msg, "senderAvatar", userAvatarByUsername.getOrDefault(senderUsername, ""));
@@ -562,7 +612,7 @@ public class ChatWorkspaceController {
 
             String senderLabel = isMe ? sender : senderDisplayName;
             HBox node = createMessageNodeByType(id, senderLabel, content, isMe, type,
-                    msg.has("reactions") ? msg.getAsJsonArray("reactions") : null, filename,
+                    msg.has("reactions") ? msg.getAsJsonArray("reactions") : null, iconResource,
                     senderUsername, senderDisplayName, senderAvatar);
             listMessages.getItems().add(node);
             messageIdToIndexMap.put(id, listMessages.getItems().size() - 1);
@@ -645,7 +695,30 @@ public class ChatWorkspaceController {
             }
         }
 
-        showPushNotification("Nhóm", sender + ": " + ("TEXT".equals(type) ? content : "[" + type + "]"));
+        boolean isMuted = json.has("isMuted") && json.get("isMuted").getAsBoolean();
+        if (!isMuted) {
+            showPushNotification("Nhóm", sender + ": " + ("TEXT".equals(type) ? content : "[" + type + "]"));
+        }
+    }
+
+    public void handleGroupRemoved(String payload) {
+        JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+        long groupId = json.get("groupId").getAsLong();
+        String reason = getJsonString(json, "reason", "Nhóm không còn khả dụng.");
+        String removedKey = groupConversationKey(groupId);
+
+        recentConversations.removeIf(item -> item.key().equals(removedKey));
+        if (removedKey.equals(currentConversationKey)) {
+            currentConversationKey = null;
+            listMessages.getItems().clear();
+            messageIdToIndexMap.clear();
+            messageConversationMap.clear();
+            reactionSummaryMap.clear();
+            hidePrivateControlButtons();
+            hideGroupControlButtons();
+            switchToRecentConversations();
+            showAlert("Thông báo", reason, Alert.AlertType.INFORMATION);
+        }
     }
 
     public void handleReactionUpdated(String payload) {
@@ -958,24 +1031,15 @@ public class ChatWorkspaceController {
 
         if (recording) {
             btnVoice.setText(null);
-            btnVoice.setGraphic(createComposerIcon("M6 6h12v12H6z", "composer-stop-icon", 1.05));
+            btnVoice.setGraphic(IconUtil.createIcon("/icon/stop.svg", "composer-stop-icon", 1.05));
             btnVoice.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             btnVoice.setStyle("-fx-min-width: 44px; -fx-min-height: 44px; -fx-background-color: #ef4444; -fx-background-radius: 9px; -fx-cursor: hand;");
         } else {
             btnVoice.setText(null);
-            btnVoice.setGraphic(createComposerIcon("M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z", "composer-voice-icon", 1.05));
+            btnVoice.setGraphic(IconUtil.createIcon("/icon/mic.svg", "composer-voice-icon", 1.05));
             btnVoice.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             btnVoice.setStyle("-fx-min-width: 44px; -fx-min-height: 44px; -fx-background-color: #edf2f7; -fx-background-radius: 9px; -fx-cursor: hand;");
         }
-    }
-
-    private SVGPath createComposerIcon(String path, String styleClass, double scale) {
-        SVGPath icon = new SVGPath();
-        icon.setContent(path);
-        icon.setScaleX(scale);
-        icon.setScaleY(scale);
-        icon.getStyleClass().add(styleClass);
-        return icon;
     }
 
     @FXML
@@ -1035,12 +1099,73 @@ public class ChatWorkspaceController {
         }
     }
 
+    @FXML
+    public void handleMuteGroup(ActionEvent event) {
+        Long groupId = getActiveGroupTargetId();
+        if (groupId == null) {
+            showAlert("Thông báo", "Vui lòng chọn nhóm để tắt thông báo.", Alert.AlertType.WARNING);
+            return;
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("groupId", groupId);
+        ClientApplication.getChatClient().sendPacket(new Packet("GROUP_MUTE_REQUEST", payload.toString()));
+    }
+
+    @FXML
+    public void handleLeaveGroup(ActionEvent event) {
+        Long groupId = getActiveGroupTargetId();
+        if (groupId == null) {
+            showAlert("Thông báo", "Vui lòng chọn nhóm để rời.", Alert.AlertType.WARNING);
+            return;
+        }
+        if (!confirmGroupAction("Rời nhóm", "Bạn có chắc muốn rời nhóm này?")) {
+            return;
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("groupId", groupId);
+        ClientApplication.getChatClient().sendPacket(new Packet("GROUP_LEAVE_REQUEST", payload.toString()));
+    }
+
+    @FXML
+    public void handleDeleteGroup(ActionEvent event) {
+        Long groupId = getActiveGroupTargetId();
+        if (groupId == null) {
+            showAlert("Thông báo", "Vui lòng chọn nhóm để xóa.", Alert.AlertType.WARNING);
+            return;
+        }
+        if (!confirmGroupAction("Xóa nhóm", "Bạn có chắc muốn xóa nhóm này? Toàn bộ tin nhắn nhóm sẽ bị xóa.")) {
+            return;
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("groupId", groupId);
+        ClientApplication.getChatClient().sendPacket(new Packet("GROUP_DELETE_REQUEST", payload.toString()));
+    }
+
+    private boolean confirmGroupAction(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        return alert.showAndWait().filter(button -> button == ButtonType.OK).isPresent();
+    }
+
     private void updateControlButtons(String targetUser) {
         if (btnBlock == null || btnMute == null || parentController == null) return;
-        if (btnCall != null) btnCall.setVisible(true);
-        if (btnVideoCall != null) btnVideoCall.setVisible(true);
+        if (btnCall != null) {
+            btnCall.setVisible(true);
+            btnCall.setManaged(true);
+        }
+        if (btnVideoCall != null) {
+            btnVideoCall.setVisible(true);
+            btnVideoCall.setManaged(true);
+        }
         btnBlock.setVisible(true);
+        btnBlock.setManaged(true);
         btnMute.setVisible(true);
+        btnMute.setManaged(true);
 
         boolean isBlocked = parentController.getIsBlockedByMeMap().getOrDefault(targetUser, false);
         configureActionButton(
@@ -1057,15 +1182,54 @@ public class ChatWorkspaceController {
                 isMuted ? "success-button" : "warning-button");
     }
 
-    private void configureActionButton(Button button, String iconPath, String tooltipText, String stateStyleClass) {
-        SVGPath icon = new SVGPath();
-        icon.setContent(iconPath);
-        icon.setScaleX(0.82);
-        icon.setScaleY(0.82);
-        icon.getStyleClass().add("action-button-icon");
+    private void hidePrivateControlButtons() {
+        setButtonVisibility(btnCall, false);
+        setButtonVisibility(btnVideoCall, false);
+        setButtonVisibility(btnBlock, false);
+        setButtonVisibility(btnMute, false);
+    }
 
+    private void hideGroupControlButtons() {
+        setButtonVisibility(btnGroupMute, false);
+        setButtonVisibility(btnLeaveGroup, false);
+        setButtonVisibility(btnDeleteGroup, false);
+    }
+
+    private void updateGroupControlButtons(Long groupId) {
+        if (groupId == null || parentController == null || parentController.getGroupsViewController() == null) {
+            hideGroupControlButtons();
+            return;
+        }
+
+        boolean isMuted = parentController.getGroupsViewController().isGroupMutedByMe(groupId);
+        configureActionButton(
+                btnGroupMute,
+                isMuted ? BELL_ICON : BELL_OFF_ICON,
+                isMuted ? "Mở TB nhóm" : "Tắt TB nhóm",
+                isMuted ? "success-button" : "warning-button");
+        setButtonVisibility(btnGroupMute, true);
+
+        boolean isCreator = parentController.getGroupsViewController().isGroupCreatedByMe(groupId);
+        setButtonVisibility(btnLeaveGroup, !isCreator);
+        if (!isCreator) {
+            configureActionButton(btnLeaveGroup, "/icon/logout.svg", "Rời nhóm", "warning-button");
+        }
+        setButtonVisibility(btnDeleteGroup, isCreator);
+        if (isCreator) {
+            configureActionButton(btnDeleteGroup, "/icon/trash.svg", "Xóa nhóm", "danger-button");
+        }
+    }
+
+    private void setButtonVisibility(Button button, boolean visible) {
+        if (button == null) return;
+        button.setVisible(visible);
+        button.setManaged(visible);
+    }
+
+    private void configureActionButton(Button button, String iconPath, String tooltipText, String stateStyleClass) {
+        if (button == null) return;
         button.setText(null);
-        button.setGraphic(icon);
+        button.setGraphic(IconUtil.createIcon(iconPath, "action-button-icon", 0.82));
         button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         button.setTooltip(new Tooltip(tooltipText));
         button.setAccessibleText(tooltipText);
@@ -1107,20 +1271,28 @@ public class ChatWorkspaceController {
             return createFileMessageNode(messageId, sender, content, filename, isMe, reactions, senderUsername, senderDisplayName, senderAvatar);
         }
         if ("CALL_LOG".equals(type)) {
-            return createCallLogNode(content);
+            return createCallLogNode(content, filename);
         }
         return createTextMessageNode(messageId, sender, content, isMe, reactions, senderUsername, senderDisplayName, senderAvatar);
     }
 
-    private HBox createCallLogNode(String content) {
+    private HBox createCallLogNode(String content, String iconResource) {
         HBox container = new HBox();
         container.setAlignment(Pos.CENTER);
 
-        Label label = new Label(content);
-        label.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-padding: 6 14; "
+        HBox callLog = new HBox(6);
+        callLog.setAlignment(Pos.CENTER);
+        callLog.setStyle("-fx-padding: 6 14; "
                 + "-fx-background-color: #f1f5f9; -fx-background-radius: 12;");
 
-        container.getChildren().add(label);
+        if (iconResource != null && !iconResource.isBlank()) {
+            callLog.getChildren().add(IconUtil.createIcon(iconResource, "call-log-icon", 0.72));
+        }
+        Label label = new Label(content);
+        label.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b;");
+
+        callLog.getChildren().add(label);
+        container.getChildren().add(callLog);
         container.setUserData(new MessageData(null, "CALL_LOG", content, false, "", "", "", null));
         return container;
     }
@@ -1368,8 +1540,7 @@ public class ChatWorkspaceController {
             }
         });
 
-        Label fileIcon = new Label("FILE");
-        fileIcon.getStyleClass().add("media-icon-file");
+        Node fileIcon = IconUtil.createIcon("/icon/file.svg", "composer-file-icon", 1.1);
         HBox fileBox = new HBox(8, fileIcon, fileNameLabel, downloadButton);
         fileBox.setPadding(new javafx.geometry.Insets(8, 12, 8, 12));
 
@@ -1407,8 +1578,7 @@ public class ChatWorkspaceController {
         Label senderLabel = new Label(sender);
         senderLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
 
-        Label videoIcon = new Label("VIDEO");
-        videoIcon.getStyleClass().add("media-icon-video");
+        Node videoIcon = IconUtil.createIcon("/icon/video.svg", "composer-video-icon", 1.1);
 
         Label fileNameLabel = new Label(filename == null ? "video" : filename);
         fileNameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
